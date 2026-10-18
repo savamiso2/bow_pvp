@@ -51,7 +51,7 @@ public record Settings(
                 c.getInt("player.guard-duration-ticks", 6),
                 c.getInt("player.guard-cooldown-ticks", 80),
                 !"menu".equalsIgnoreCase(c.getString("cards.style", "stage")),
-                c.getInt("cards.offer-size", 3),
+                c.getInt("cards.offer-size", 5),
                 c.getDouble("cards.bottom-bonus-ratio", 0.25),
                 c.getInt("cards.max-extra-arrows", 6),
                 c.getInt("cards.max-bounces", 3));

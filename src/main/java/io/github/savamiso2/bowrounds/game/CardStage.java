@@ -30,9 +30,10 @@ import org.joml.Vector3f;
  */
 final class CardStage {
 
-    private static final double DISTANCE = 2.6;
-    private static final double SPACING = 1.25;
-    private static final double HOVER_COS = Math.cos(Math.toRadians(13));
+    /** 自分を中心にした弧の半径と、カード同士の角度の間隔（説明文どうしが重ならない広さ）。 */
+    private static final double DISTANCE = 3.2;
+    private static final double STEP_DEGREES = 38;
+    private static final double HOVER_COS = Math.cos(Math.toRadians(STEP_DEGREES / 2 - 1));
     private static final float CARD_SCALE = 0.9f;
     /** アイコンは少し上、説明文はその下へ離して置く（説明文は下端から上に伸びるので、下端をアイコンより十分下げる）。 */
     private static final float ICON_Y = 0.2f;
@@ -62,13 +63,13 @@ final class CardStage {
             forward = new Vector(0, 0, 1);
         }
         forward.normalize();
-        Vector right = forward.clone().crossProduct(new Vector(0, 1, 0)).normalize();
 
+        // 正面を中心に、左右へ扇形に並べる（多いと自分を囲むように広がる）
         List<Card> offer = gamePlayer.offer;
         for (int i = 0; i < offer.size(); i++) {
             Card card = offer.get(i);
-            double offset = SPACING * (i - (offer.size() - 1) / 2.0);
-            Location position = eye.clone().add(forward.clone().multiply(DISTANCE)).add(right.clone().multiply(offset));
+            double angle = Math.toRadians(STEP_DEGREES * ((offer.size() - 1) / 2.0 - i));
+            Location position = eye.clone().add(forward.clone().rotateAroundY(angle).multiply(DISTANCE));
             ItemDisplay item = spawnItem(player, card, position);
             TextDisplay text = spawnText(player, card, position.clone().subtract(0, TEXT_DROP, 0));
             slots.add(new Slot(card, position, item, text));
@@ -96,7 +97,7 @@ final class CardStage {
             d.setPersistent(false);
             d.setBillboard(Display.Billboard.CENTER);
             d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(130);
+            d.setLineWidth(100);
             d.setShadowed(true);
             d.setBackgroundColor(background(card.rarity(), false));
             d.text(label(card));
