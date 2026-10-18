@@ -98,7 +98,7 @@ final class Fx {
 
     /**
      * 不死のトーテムを使ったときの演出で、取ったカードを画面いっぱいに出す。
-     * クライアントは手に持っている「死を防ぐ」アイテムを表示するので、一瞬だけオフハンドにカードを持たせる。
+     * クライアントは手に持っている「死を防ぐ」アイテムを表示するので、少しだけオフハンドにカードを持たせる。
      */
     static void cardReveal(BowRounds plugin, Player player, Card card) {
         ItemStack item = ItemStack.of(card.rarity().icon());
@@ -107,12 +107,17 @@ final class Fx {
         PlayerInventory inventory = player.getInventory();
         ItemStack previous = inventory.getItemInOffHand();
         inventory.setItemInOffHand(item);
-        player.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+        // 持ち物の変更はtickの終わりに送られるので、演出は次のtickに出す（先に出すとトーテムの絵になる）
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) {
+                player.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+            }
+        }, 1L);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline()) {
                 inventory.setItemInOffHand(previous);
             }
-        }, 1L);
+        }, 3L);
     }
 
     // ---- 脱落・キル ----
