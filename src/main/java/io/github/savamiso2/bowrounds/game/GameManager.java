@@ -37,6 +37,10 @@ public final class GameManager {
     }
 
     /** ロビーへ送り、待機用の状態にする（アドベンチャー・全回復・持ち物なし）。 */
+    BowRounds plugin() {
+        return plugin;
+    }
+
     public void sendToLobby(Player player) {
         player.getInventory().clear();
         player.setGameMode(GameMode.ADVENTURE);
@@ -49,6 +53,7 @@ public final class GameManager {
         player.setFallDistance(0f);
         Location lobby = plugin.arenas().lobby();
         player.teleport(lobby != null ? lobby : player.getWorld().getSpawnLocation());
+        TabList.lobby(player);
     }
 
     /** 試合を始める。始められなければ理由を返す。 */

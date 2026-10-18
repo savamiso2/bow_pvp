@@ -181,10 +181,6 @@ final class Fx {
         at.getWorld().playSound(at, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
     }
 
-    static Component sidebarTitle() {
-        return mm("<bold><gradient:#ffcc33:#ff6633>➶ BOW ROUNDS</gradient></bold>");
-    }
-
     static Title.Times times(long fadeIn, long stay, long fadeOut) {
         return Title.Times.times(Duration.ofMillis(fadeIn), Duration.ofMillis(stay), Duration.ofMillis(fadeOut));
     }

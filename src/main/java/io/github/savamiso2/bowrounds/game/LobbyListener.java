@@ -2,6 +2,7 @@ package io.github.savamiso2.bowrounds.game;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -12,6 +13,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
 /** 専用サーバー向け：入ったらロビーへ。試合に出ていない人はロビーで無敵・満腹、ブロックも触れない。 */
@@ -29,6 +31,22 @@ public final class LobbyListener implements Listener {
         games.sendToLobby(player);
         if (games.game().isPresent()) {
             player.sendMessage(Component.text("試合中です。次の試合から参加できます", NamedTextColor.YELLOW));
+        }
+        refreshLobbyTabs();
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        // 抜けた人がまだオンライン扱いなので、1tick後に人数を数え直す
+        Bukkit.getScheduler().runTask(games.plugin(), this::refreshLobbyTabs);
+    }
+
+    /** ロビーにいる人の Tab ヘッダー（オンライン人数）を更新する。 */
+    private void refreshLobbyTabs() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (games.gamePlayer(p).isEmpty()) {
+                TabList.lobby(p);
+            }
         }
     }
 
