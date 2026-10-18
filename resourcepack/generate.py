@@ -1,4 +1,4 @@
-"""カードのテクスチャ（タロットカード風、256x256）とモデル定義を生成する。
+"""カードのテクスチャ（黒地にHUD風のパネル、フラットで少ない色数、256x256）とモデル定義を生成する。
 
 使い方: python3 resourcepack/generate.py
 出力: resourcepack/pack/ 以下（これを zip にしたものがリソースパック）と resourcepack/preview.png
@@ -44,36 +44,13 @@ CARDS = {
     "blink_guard": ("rare", "Blink"),
 }
 
-# レア度ごとの配色。枠の金属・背景（上下）・背景の光・星の色
-THEMES = {
-    "common": {"metal": ("#f4f6fa", "#8d95a3", "#e2e6ee"), "bg": ("#3d4a5c", "#141a24"),
-               "halo": "#9fb4cc", "star": "#dfe8f5"},
-    "rare": {"metal": ("#fff2b0", "#b8862b", "#f3d77e"), "bg": ("#1d3f9a", "#070f33"),
-             "halo": "#5f8cff", "star": "#fff3c4"},
-    "epic": {"metal": ("#fff2b0", "#b8862b", "#f3d77e"), "bg": ("#6a2a8a", "#1a0628"),
-             "halo": "#d07bff", "star": "#ffe9a8"},
-}
-
-NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-            "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"]
-
-FONT_PATHS = ["/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
-              "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf",
-              "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"]
-
-
-def font(size):
-    for path in FONT_PATHS:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
-
-
 def hexc(h, a=255):
     if isinstance(h, tuple):
         return h if len(h) == 4 else h + (a,)
     return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) + (a,)
 
+
+FLAT = True
 
 # ---------------------------------------------------------------- 塗りの道具
 
@@ -145,7 +122,9 @@ def sparkle(layer, c, r, paint):
 
 
 def glow(layer, color, radius, strength=1.0):
-    """layer の形のまわりに色の光をにじませた画像を返す（layer の下に敷く）。"""
+    """layer の形のまわりに色の光をにじませた画像を返す（layer の下に敷く）。フラットなデザインなので今は使わない。"""
+    if FLAT:
+        return Image.new("RGBA", (S, S), (0, 0, 0, 0))
     a = layer.getchannel("A").filter(ImageFilter.GaussianBlur(radius))
     a = Image.fromarray(np.clip(np.asarray(a, np.float32) * strength, 0, 255).astype(np.uint8))
     g = Image.new("RGBA", (S, S), hexc(color))
@@ -438,130 +417,167 @@ def emblem(name):
     return L, accent
 
 
-# ---------------------------------------------------------------- カード本体
+# ---------------------------------------------------------------- カード本体（黒地にHUD風のパネル）
 
 CARD = (224, 16, 800, 1008)  # x0, y0, x1, y1
 
+# レア度ごとの色。パネルの色とアクセントの2色。ほかは黒と白だけ
+PALETTES = {
+    "common": {"panel": "#d3d9df", "accent": "#18c29c", "label": "COMMON"},
+    "rare": {"panel": "#3f9be0", "accent": "#ff1f8e", "label": "RARE"},
+    "epic": {"panel": "#ff1f8e", "accent": "#ffd400", "label": "EPIC"},
+}
+INK = "#0d0d10"
+WHITE = "#ffffff"
 
-def rounded(box, r):
-    return mask_of(lambda d: d.rounded_rectangle(box, r, fill=255))
+BOLD_FONTS = ["/usr/share/fonts/opentype/inter/InterDisplay-BlackItalic.otf",
+              "/usr/share/fonts/opentype/inter/Inter-BlackItalic.otf",
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
+MONO_FONTS = ["/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+              "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf"]
 
 
-def text_center(layer, xy, text, size, paint, shadow=None, spacing=0):
-    f = font(size)
+def load_font(paths, size):
+    for path in paths:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
+def text_mask(text, size, xy, anchor="mm", mono=False, angle=0.0):
+    f = load_font(MONO_FONTS if mono else BOLD_FONTS, size)
+    m = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(m).text(xy, text, font=f, fill=255, anchor=anchor)
+    if angle:
+        m = m.rotate(angle, resample=Image.BICUBIC, center=xy)
+    return m
+
+
+def chamfer(x0, y0, x1, y1, cuts):
+    """角を斜めに落とした四角形。cuts = (左上, 右上, 右下, 左下) の切り落とす長さ。"""
+    a, b, c, d = cuts
+    return [(x0 + a, y0), (x1 - b, y0), (x1, y0 + b), (x1, y1 - c), (x1 - c, y1), (x0 + d, y1), (x0, y1 - d), (x0, y0 + a)]
+
+
+def hatch(layer, box, paint, step=26, width=12, slope=1.0):
+    """box の中に斜線を引く。"""
+    x0, y0, x1, y1 = box
     m = Image.new("L", (S, S), 0)
     d = ImageDraw.Draw(m)
-    w = sum(d.textlength(ch, font=f) for ch in text) + spacing * (len(text) - 1)
-    x = xy[0] - w / 2
-    for ch in text:
-        d.text((x, xy[1]), ch, font=f, fill=255, anchor="lm")
-        x += d.textlength(ch, font=f) + spacing
-    if shadow:
-        sh = Image.new("RGBA", (S, S), hexc(shadow))
-        sh.putalpha(m.filter(ImageFilter.GaussianBlur(3)))
-        layer.alpha_composite(sh, (0, 4))
+    h = y1 - y0
+    x = x0 - h * slope
+    while x < x1:
+        d.polygon([(x, y1), (x + width, y1), (x + width + h * slope, y0), (x + h * slope, y0)], fill=255)
+        x += step
+    clip = mask_of(lambda dd: dd.rectangle(box, fill=255))
+    m = Image.fromarray(np.minimum(np.asarray(m), np.asarray(clip)))
     fill(layer, m, paint)
+
+
+def cross(layer, c, r, w, paint, plus=False):
+    x, y = c
+    if plus:
+        poly(layer, [(x - w, y - r), (x + w, y - r), (x + w, y + r), (x - w, y + r)], paint)
+        poly(layer, [(x - r, y - w), (x + r, y - w), (x + r, y + w), (x - r, y + w)], paint)
+    else:
+        line(layer, [(x - r, y - r), (x + r, y + r)], w * 2, paint, round_caps=False)
+        line(layer, [(x - r, y + r), (x + r, y - r)], w * 2, paint, round_caps=False)
+
+
+def corner_arrow(layer, c, r, paint):
+    """左下向きの矢印（↙）。"""
+    x, y = c
+    line(layer, [(x + r, y - r), (x - r * 0.55, y + r * 0.55)], r * 0.36, paint, round_caps=False)
+    poly(layer, [(x - r, y + r), (x - r, y - r * 0.1), (x + r * 0.1, y + r)], paint)
+
+
+def flatten(art, accent):
+    """絵柄を 黒・白・アクセント の3色だけに塗り分け、黒い縁取りを付ける。"""
+    arr = np.asarray(art, np.float32)
+    lum = arr[..., 0] * 0.3 + arr[..., 1] * 0.59 + arr[..., 2] * 0.11
+    out = np.zeros_like(arr)
+    for lo, hi, c in ((-1, 80, INK), (80, 165, accent), (165, 256, WHITE)):
+        out[(lum > lo) & (lum <= hi)] = hexc(c)
+    alpha = np.where(arr[..., 3] > 110, 255, 0).astype(np.uint8)
+    out[..., 3] = alpha
+    flat = Image.fromarray(out.astype(np.uint8), "RGBA")
+    edge = Image.fromarray(alpha).filter(ImageFilter.MaxFilter(17))
+    base = Image.new("RGBA", (S, S), hexc(INK))
+    base.putalpha(edge)
+    base.alpha_composite(flat)
+    return base
 
 
 def card_texture(index, name, rarity, title):
     custom = os.path.join(CUSTOM, name + ".png")
     if os.path.exists(custom):
         return Image.open(custom).convert("RGBA")
-    th = THEMES[rarity]
-    m1, m2, m3 = th["metal"]
+    pal = PALETTES[rarity]
+    panel, accent = pal["panel"], pal["accent"]
     x0, y0, x1, y1 = CARD
+    num = f"{index + 1:02d}"
     img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    metal = gradient(m1, m2, (x0, y0), (x1, y1), m3)
+    poly(img, chamfer(x0, y0, x1, y1, (0, 40, 0, 40)), INK)
 
-    # 影・外枠（金属）
-    shadow = Image.new("RGBA", (S, S), (0, 0, 0, 120))
-    shadow.putalpha(rounded((x0 + 6, y0 + 10, x1 + 6, y1 + 6), 44).filter(ImageFilter.GaussianBlur(8)).point(lambda v: v // 2))
-    img.alpha_composite(shadow)
-    fill(img, rounded(CARD, 44), metal)
-    fill(img, rounded((x0 + 8, y0 + 8, x1 - 8, y1 - 8), 38), (0, 0, 0, 70))
-    fill(img, rounded((x0 + 12, y0 + 12, x1 - 12, y1 - 12), 34), metal)
-
-    # 背景（夜空）
-    ix0, iy0, ix1, iy1 = x0 + 30, y0 + 30, x1 - 30, y1 - 30
-    inner = rounded((ix0, iy0, ix1, iy1), 22)
-    fill(img, inner, gradient(th["bg"][0], th["bg"][1], (0, iy0), (0, iy1)))
-    sky = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ys, xs = np.mgrid[0:S, 0:S].astype(np.float32)
-    halo = Image.new("RGBA", (S, S), hexc(th["halo"]))
-    halo.putalpha(Image.fromarray((np.clip(1 - np.hypot(xs - CX, ys - CY) / 330, 0, 1) * 150).astype(np.uint8)))
-    sky.alpha_composite(halo)
-    # 後光（細い光の筋）
-    rays = Image.new("L", (S, S), 0)
-    rd = ImageDraw.Draw(rays)
-    for i in range(36):
-        a = math.pi * 2 * i / 36
-        rd.line([(CX, CY), (CX + math.cos(a) * 600, CY + math.sin(a) * 600)], fill=60 if i % 2 else 110, width=3)
-    rays = rays.filter(ImageFilter.GaussianBlur(1))
-    fill(sky, rays, th["star"])
+    # 左の細い帯：斜線ブロック、バーコード、ノイズ、＋＋
+    poly(img, chamfer(244, 44, 290, 190, (0, 0, 22, 0)), accent)
+    hatch(img, (244, 44, 290, 190), INK, step=34, width=10)
+    for i, w in enumerate((10, 4, 6, 14, 4, 8, 4, 12, 6, 4, 10)):
+        y = 220 + sum((10, 4, 6, 14, 4, 8, 4, 12, 6, 4, 10)[:i]) + i * 6
+        poly(img, [(244, y), (290 - (i % 3) * 8, y), (290 - (i % 3) * 8, y + w), (244, y + w)], WHITE)
     rng = random.Random(name)
-    sd = Image.new("L", (S, S), 0)
-    sdd = ImageDraw.Draw(sd)
-    for _ in range(90):
-        x, y, r = rng.uniform(ix0, ix1), rng.uniform(iy0, iy1), rng.choice((1.5, 2, 2.5, 3.5))
-        sdd.ellipse((x - r, y - r, x + r, y + r), fill=rng.randint(120, 255))
-    fill(sky, sd, th["star"])
-    for _ in range(5):
-        sparkle(sky, (rng.uniform(ix0 + 20, ix1 - 20), rng.uniform(iy0 + 120, iy1 - 260)), rng.uniform(8, 16), th["star"])
-    # 夜空は内側だけに
-    a = np.asarray(sky.getchannel("A"), np.float32) * (np.asarray(inner, np.float32) / 255)
-    sky.putalpha(Image.fromarray(a.astype(np.uint8)))
-    img.alpha_composite(sky)
+    for gy in range(400, 470, 10):
+        for gx in range(244, 290, 10):
+            if rng.random() < 0.55:
+                poly(img, [(gx, gy), (gx + 9, gy), (gx + 9, gy + 9), (gx, gy + 9)], WHITE)
+    for cx, cy in ((254, 500), (282, 500), (254, 528), (282, 528)):
+        cross(img, (cx, cy), 10, 3, WHITE, plus=True)
+    hatch(img, (244, 560, 290, 700), WHITE, step=30, width=9)
 
-    # 内側の細い金線と四隅の飾り
-    fill(img, mask_of(lambda d: d.rounded_rectangle((ix0 + 14, iy0 + 14, ix1 - 14, iy1 - 14), 14, outline=255, width=4)), metal)
-    for cx, cy in ((ix0 + 14, iy0 + 14), (ix1 - 14, iy0 + 14), (ix0 + 14, iy1 - 14), (ix1 - 14, iy1 - 14)):
-        poly(img, [(cx, cy - 18), (cx + 18, cy), (cx, cy + 18), (cx - 18, cy)], metal)
-        ellipse(img, (cx - 6, cy - 6, cx + 6, cy + 6), th["bg"][1])
+    # メインのパネル（左に段差、角を落とす）
+    main = [(326, 40), (744, 40), (780, 76), (780, 650), (752, 678), (700, 678), (676, 700), (420, 700), (396, 678),
+            (326, 678), (306, 658), (306, 470), (322, 454), (322, 300), (306, 284), (306, 60)]
+    poly(img, main, panel)
+    # パネル内の飾り：右の斜線、右上の×、左上の斜線、左下の↙
+    hatch(img, (736, 300, 768, 560), WHITE, step=26, width=10)
+    poly(img, [(736, 572), (752, 588), (768, 572), (768, 590), (752, 606), (736, 590)], accent)
+    cross(img, (742, 82), 18, 6, WHITE)
+    hatch(img, (338, 62, 440, 92), accent, step=30, width=14)
+    corner_arrow(img, (352, 640), 22, WHITE)
+    fill(img, text_mask(f"TYPE-{num} / {pal['label']}", 20, (366, 678 - 18), anchor="lm", mono=True), INK)
 
-    # 上の番号
-    poly(img, [(CX - 70, 78), (CX + 70, 78), (CX + 88, 112), (CX + 70, 146), (CX - 70, 146), (CX - 88, 112)], metal)
-    poly(img, [(CX - 62, 86), (CX + 62, 86), (CX + 78, 112), (CX + 62, 138), (CX - 62, 138), (CX - 78, 112)], th["bg"][1])
-    text_center(img, (CX, 112), NUMERALS[index], 46, metal, spacing=4)
+    # 絵柄（3色＋黒い縁取り）。パネルの中央に縮めて置く
+    art, _ = emblem(name)
+    art = flatten(art, accent)
+    k = 0.82
+    tx, ty = 543, 360
+    art = art.transform((S, S), Image.AFFINE, (1 / k, 0, CX - tx / k, 0, 1 / k, CY - ty / k), resample=Image.BICUBIC)
+    img.alpha_composite(art)
 
-    # 絵柄（アーチの窓の中）
-    arch = mask_of(lambda d: (d.rectangle((300, 300, 724, 760), fill=255), d.ellipse((300, 170, 724, 430), fill=255)))
-    fill(img, mask_of(lambda d: (d.rectangle((292, 300, 732, 768), fill=255), d.ellipse((292, 162, 732, 438), fill=255))), metal)
-    fill(img, arch, radial(th["halo"], th["bg"][1], (CX, CY), 340))
-    art, accent = emblem(name)
-    art = outlined(art)
-    glow_layer = glow(art, accent, 26, 1.3)
-    window = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    window.alpha_composite(glow_layer)
-    window.alpha_composite(art)
-    a = np.asarray(window.getchannel("A"), np.float32) * (np.asarray(arch, np.float32) / 255)
-    window.putalpha(Image.fromarray(a.astype(np.uint8)))
-    img.alpha_composite(window)
+    # 下のパネル：名前と小さな文字
+    lower = [(244, 722), (560, 722), (584, 744), (780, 744), (780, 930), (750, 960), (244, 960)]
+    poly(img, lower, accent)
+    size = 96
+    while size > 40:
+        bb = text_mask(title.upper(), size, (512, 834)).getbbox()
+        if bb[2] - bb[0] <= 470:
+            break
+        size -= 4
+    fill(img, text_mask(title.upper(), size, (512, 834), anchor="mm"), INK)
+    fill(img, text_mask(f"No.{num}", 26, (262, 748), anchor="lm", mono=True), INK)
+    fill(img, text_mask("BOW//ROUNDS", 22, (764, 772), anchor="rm", mono=True), INK)
+    for i in range(3):
+        x = 640 + i * 30
+        if i < {"common": 1, "rare": 2, "epic": 3}[rarity]:
+            poly(img, [(x, 912), (x + 20, 912), (x + 30, 900), (x + 10, 900)], INK)
+        else:
+            line(img, [(x, 912), (x + 20, 912), (x + 30, 900), (x + 10, 900), (x, 912)], 4, INK, round_caps=False)
+    hatch(img, (262, 896, 600, 922), INK, step=24, width=10)
 
-    # 名前の帯（リボン）
-    ry0, ry1 = 800, 900
-    for s in (-1, 1):
-        tip = CX + s * 270
-        poly(img, [(CX + s * 200, ry0 + 22), (tip, ry0 + 22), (tip - s * 26, (ry0 + ry1) / 2 + 16), (tip, ry1 + 14),
-                   (CX + s * 200, ry1 + 14)], gradient("#c9b48a", "#7a6440", (0, ry0), (0, ry1)))
-    fill(img, mask_of(lambda d: d.rounded_rectangle((CX - 232, ry0, CX + 232, ry1), 10, fill=255)), metal)
-    fill(img, mask_of(lambda d: d.rounded_rectangle((CX - 222, ry0 + 9, CX + 222, ry1 - 9), 6, fill=255)),
-         gradient("#fbf3dc", "#e3d1a6", (0, ry0), (0, ry1)))
-    size = 62 if len(title) <= 9 else 52 if len(title) <= 11 else 46
-    text_center(img, (CX, (ry0 + ry1) / 2 + 2), title.upper(), size, "#3a2414", spacing=2)
-
-    # レア度の星
-    count = {"common": 1, "rare": 2, "epic": 3}[rarity]
-    for i in range(count):
-        x = CX + (i - (count - 1) / 2) * 62
-        star = [(x + (26 if k % 2 == 0 else 11) * math.cos(-math.pi / 2 + math.pi * k / 5),
-                 945 + (26 if k % 2 == 0 else 11) * math.sin(-math.pi / 2 + math.pi * k / 5)) for k in range(10)]
-        poly(img, star, metal)
-
-    # 全体にうっすら光沢
-    gloss = mask_of(lambda d: d.polygon([(x0, y0), (x0 + 380, y0), (x0, y0 + 520)], fill=255)).filter(ImageFilter.GaussianBlur(40))
-    gloss = Image.fromarray((np.asarray(gloss, np.float32) * (np.asarray(rounded(CARD, 44), np.float32) / 255) * 0.18).astype(np.uint8))
-    fill(img, gloss, "#ffffff")
-
+    # いちばん下：斜線の帯とVの切り欠き
+    hatch(img, (244, 974, 780, 996), WHITE, step=26, width=11)
+    poly(img, [(490, 974), (534, 974), (512, 996)], accent)
+    poly(img, [(494, 974), (530, 974), (512, 990)], INK)
     return img.resize((OUT, OUT), Image.LANCZOS)
 
 
