@@ -49,6 +49,6 @@ gradle build
 
 ## 収録カード（20枚）
 
-散弾 / 跳弾 / 速装填 / 大容量 / 頑丈 / 毒矢 / 重力無視 / 追尾 / 吸血 / ジェット / 剛弓 / 爆裂矢 / 貫通 / 分裂 / ノックバック
+Buckshot（散弾） / Ricochet（跳弾） / Quick Reload（速装填） / Big Quiver（大容量） / Tank（頑丈） / Toxic（毒矢） / Laser（重力無視） / Homing（追尾） / Leech（吸血） / Jetpack（空中ジャンプ） / Power Shot（剛弓） / Explosive（爆裂矢） / Pierce（貫通） / Splitter（分裂） / Knockback（ノックバック）
 
-ガード強化：反射 / 衝撃波 / ガード上手 / ブリンクガード / ダッシュ
+ガード強化：Reflect（反射） / Shockwave（衝撃波） / Quick Guard（ガードCD短縮） / Blink（瞬間移動） / Dash（ダッシュ）
