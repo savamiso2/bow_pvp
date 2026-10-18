@@ -21,13 +21,6 @@ CARDS = {
     "dash": "common", "blink_guard": "rare",
 }
 
-RARITY = {
-    # 外枠, 枠の明るい色, 背景(上), 背景(下), 宝石
-    "common": ((40, 40, 46), (190, 196, 204), (58, 62, 72), (28, 30, 36), (230, 230, 235)),
-    "rare": ((14, 28, 60), (80, 170, 255), (30, 64, 120), (12, 24, 52), (120, 220, 255)),
-    "epic": ((40, 10, 56), (220, 120, 255), (86, 30, 120), (30, 8, 48), (255, 200, 80)),
-}
-
 
 def rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
@@ -288,54 +281,29 @@ def icon(name):
     return c.img
 
 
+FRAMES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frames")
+CUSTOM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom")
+OUTLINE = (40, 40, 48, 255)
+
+
 def card_texture(name, rarity):
-    outline, frame, top, bottom, gem = RARITY[rarity]
-    img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
-    x0, x1, y0, y1 = 4, 27, 0, 31
-    for y in range(y0, y1 + 1):
-        t = (y - y0) / (y1 - y0)
-        bg = tuple(round(top[i] * (1 - t) + bottom[i] * t) for i in range(3)) + (255,)
-        for x in range(x0, x1 + 1):
-            img.putpixel((x, y), bg)
-    # 中央をほんのり明るく
-    for y in range(y0, y1 + 1):
-        for x in range(x0, x1 + 1):
-            d = math.hypot(x - 15.5, y - 14.5)
-            if d < 10:
-                r, g, b, a = img.getpixel((x, y))
-                k = (10 - d) / 10 * 0.35
-                img.putpixel((x, y), (round(r + (frame[0] - r) * k), round(g + (frame[1] - g) * k), round(b + (frame[2] - b) * k), 255))
-    # 外枠と枠（角を丸める）
-    for y in range(y0, y1 + 1):
-        for x in range(x0, x1 + 1):
-            edge = min(x - x0, x1 - x, y - y0, y1 - y)
-            corner = min(x - x0, x1 - x) + min(y - y0, y1 - y)
-            if corner == 0:
-                img.putpixel((x, y), (0, 0, 0, 0))
-            elif edge == 0 or corner == 1:
-                img.putpixel((x, y), outline + (255,))
-            elif edge == 1 or corner == 2:
-                img.putpixel((x, y), frame + (255,))
-    # 上の飾り線
-    for x in range(x0 + 3, x1 - 2):
-        img.putpixel((x, 3), tuple(round(c * 0.7) for c in frame) + (255,))
-    # アイコン（影つき）
+    """カードの枠（frames/<レア度>.png）の白い部分にアイコンを置く。custom/<名前>.png があればそれをそのまま使う。"""
+    custom = os.path.join(CUSTOM, name + ".png")
+    if os.path.exists(custom):
+        return Image.open(custom).convert("RGBA")
+    img = Image.open(os.path.join(FRAMES, rarity + ".png")).convert("RGBA")
     ic = icon(name)
-    shadow = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    ox, oy = 8, 5  # 枠の内側（白い部分）は x 8〜23, y 3〜23。アイコン(16x16)をその中に置く
+    inside = lambda x, y: img.getpixel((x, y))[:3] == (255, 255, 255)
+    # 白い背景でも見えるように、アイコンのまわりを1ドット縁取りする（枠にははみ出さない）
     for y in range(16):
         for x in range(16):
             if ic.getpixel((x, y))[3] > 0:
-                shadow.putpixel((x, y), (0, 0, 0, 110))
-    img.alpha_composite(shadow, (9, 8))
-    img.alpha_composite(ic, (8, 7))
-    # 下部にレア度の宝石（コモン1・レア2・エピック3）
-    count = {"common": 1, "rare": 2, "epic": 3}[rarity]
-    start = 16 - count * 2 + 1
-    for i in range(count):
-        gx = start + i * 4 - 1
-        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-            img.putpixel((gx + dx, 26 + dy), gem + (255,))
-        img.putpixel((gx, 26), (255, 255, 255, 255))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    px, py = ox + x + dx, oy + y + dy
+                    if inside(px, py):
+                        img.putpixel((px, py), OUTLINE)
+    img.alpha_composite(ic, (ox, oy))
     return img
 
 
