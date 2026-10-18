@@ -40,10 +40,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Scoreboard;
 
 /**
  * 1マッチ分の進行。ラウンド開始 → 戦闘 → 順位とポイント → 勝者以外がカード選択、を規定ラウンド数くり返す。
@@ -62,8 +58,7 @@ public final class Game {
     private final Map<UUID, CardStage> stages = new LinkedHashMap<>();
     private final List<Block> pickFloor = new ArrayList<>();
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
-    private final Scoreboard scoreboard;
-    private final Objective sidebar;
+    private final TabList tab;
 
     private GameState state = GameState.COUNTDOWN;
     private int round;
@@ -83,10 +78,7 @@ public final class Game {
         for (Player player : participants) {
             players.put(player.getUniqueId(), new GamePlayer(player, settings));
         }
-        this.scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-        this.sidebar = scoreboard.registerNewObjective("bowrounds", Criteria.DUMMY,
-                Fx.sidebarTitle());
-        sidebar.setDisplaySlot(DisplaySlot.SIDEBAR);
+        this.tab = new TabList(this);
     }
 
     public GameState state() {
@@ -105,12 +97,23 @@ public final class Game {
         return plugin;
     }
 
+    Settings settings() {
+        return settings;
+    }
+
+    int round() {
+        return round;
+    }
+
+    Arena arena() {
+        return arena;
+    }
+
     void start() {
         for (GamePlayer gp : players.values()) {
             Player p = gp.player();
-            p.setScoreboard(scoreboard);
+            tab.show(p);
             p.showBossBar(bossBar);
-            sidebar.getScore(gp.name()).setScore(0);
         }
         nextRound();
     }
@@ -224,6 +227,7 @@ public final class Game {
             addPoints(killer, settings.killPoints());
         }
         broadcast(Fx.killFeed(byKiller ? killer.name() : null, victim.name()));
+        refreshTab();
         if (alivePlayers().size() <= 1) {
             endRound();
         }
@@ -611,7 +615,7 @@ public final class Game {
             speed.removeModifier(speedKey);
         }
         p.hideBossBar(bossBar);
-        p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        TabList.reset(p);
         manager.sendToLobby(p);
     }
 
@@ -644,7 +648,7 @@ public final class Game {
             return;
         }
         gp.points += amount;
-        sidebar.getScore(gp.name()).setScore(gp.points);
+        refreshTab();
     }
 
     List<GamePlayer> alivePlayers() {
@@ -706,7 +710,16 @@ public final class Game {
 
     private void startTimer(Runnable tick) {
         cancelTimer();
-        task = Bukkit.getScheduler().runTaskTimer(plugin, tick, 0L, 20L);
+        task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            tick.run();
+            refreshTab();
+        }, 0L, 20L);
+    }
+
+    private void refreshTab() {
+        if (state != GameState.FINISHED) {
+            tab.refresh();
+        }
     }
 
     private void cancelTimer() {
