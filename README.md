@@ -5,3 +5,35 @@ ROUNDS 風のローグライク弓PvP を Minecraft Paper プラグインとし�
 
 - 設計: [docs/game-design.md](docs/game-design.md)
 - 対象: Paper 26.2 / Java 25
+
+## ビルド
+
+```
+gradle build
+```
+
+`build/libs/` に jar ができます。GitHub Actions でも PR ごとにビルドし、jar を成果物として置きます。
+`gradle.properties` の `paperVersion` / `apiVersion` は、実際に公開されている paper-api のバージョンに合わせてください。
+
+## 遊び方（MVP）
+
+アリーナは専用ワールドに作るのがおすすめです（ラウンド中はそのワールドのワールドボーダーを使います）。
+
+1. `/br setlobby` … 試合後に戻る場所
+2. `/br arena create <名前> <最大人数>` … 今いる場所がアリーナの中心
+3. `/br arena addspawn <名前>` … スポーン地点を追加（人数分くらい）
+4. `/br arena border <名前> <サイズ>` / `/br arena players <名前> <最小> <最大>`
+5. 参加者が `/br join`、管理者が `/br start`
+
+| コマンド | 内容 |
+|---|---|
+| `/br join` / `/br leave` | 参加・離脱 |
+| `/br status` | 参加人数と試合状況 |
+| `/br start` / `/br stop` | 試合開始・停止（OP） |
+| `/br arena list` / `delete <名前>` | アリーナ一覧・削除（OP） |
+
+数値（体力・装填数・ポイント配分など）は `config.yml` で変更できます。
+
+## 収録カード（12枚）
+
+散弾 / 跳弾 / 速装填 / 大容量 / 頑丈 / 毒矢 / 重力無視 / 追尾 / 吸血 / ジェット / 剛弓 / 爆裂矢
