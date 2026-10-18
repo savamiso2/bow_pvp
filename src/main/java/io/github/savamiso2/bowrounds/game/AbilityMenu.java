@@ -12,6 +12,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -30,23 +31,25 @@ final class AbilityMenu implements InventoryHolder {
     private static final int NEXT = 53;
 
     private final Game game;
+    private final Player viewer;
     private final Inventory inventory;
     private final List<UUID> heads = new ArrayList<>();
     private final int page;
     private final boolean detail;
 
     /** 全員の一覧（page は 0 始まり）。 */
-    static AbilityMenu overview(Game game, int page) {
-        return new AbilityMenu(game, page, null);
+    static AbilityMenu overview(Game game, Player viewer, int page) {
+        return new AbilityMenu(game, viewer, page, null);
     }
 
     /** 1人分のカード一覧。 */
-    static AbilityMenu detail(Game game, GamePlayer target, int fromPage) {
-        return new AbilityMenu(game, fromPage, target);
+    static AbilityMenu detail(Game game, Player viewer, GamePlayer target, int fromPage) {
+        return new AbilityMenu(game, viewer, fromPage, target);
     }
 
-    private AbilityMenu(Game game, int page, GamePlayer target) {
+    private AbilityMenu(Game game, Player viewer, int page, GamePlayer target) {
         this.game = game;
+        this.viewer = viewer;
         this.detail = target != null;
         List<GamePlayer> players = game.players().stream()
                 .sorted(Comparator.comparingInt(GamePlayer::points).reversed())
@@ -65,7 +68,7 @@ final class AbilityMenu implements InventoryHolder {
                 if (slot >= 45) {
                     break;
                 }
-                inventory.setItem(slot++, cardIcon(entry.getKey(), entry.getValue()));
+                inventory.setItem(slot++, cardIcon(entry.getKey(), entry.getValue(), viewer));
             }
             if (target.cards().isEmpty()) {
                 inventory.setItem(22, named(Material.BARRIER, "まだカードを持っていません", NamedTextColor.GRAY));
@@ -83,7 +86,7 @@ final class AbilityMenu implements InventoryHolder {
             boolean overflow = cards.size() > CARDS_PER_ROW;
             int visible = overflow ? CARDS_PER_ROW - 1 : cards.size();
             for (int i = 0; i < visible; i++) {
-                inventory.setItem(row * 9 + 1 + i, cardIcon(cards.get(i).getKey(), cards.get(i).getValue()));
+                inventory.setItem(row * 9 + 1 + i, cardIcon(cards.get(i).getKey(), cards.get(i).getValue(), viewer));
             }
             if (overflow) {
                 inventory.setItem(row * 9 + CARDS_PER_ROW,
@@ -101,18 +104,18 @@ final class AbilityMenu implements InventoryHolder {
     /** クリックされたスロットに応じて、次に開くメニューを返す。何もしないなら null。 */
     AbilityMenu click(int slot) {
         if (detail) {
-            return slot == BACK ? overview(game, page) : null;
+            return slot == BACK ? overview(game, viewer, page) : null;
         }
         if (slot == PREV) {
-            return overview(game, page - 1);
+            return overview(game, viewer, page - 1);
         }
         if (slot == NEXT) {
-            return overview(game, page + 1);
+            return overview(game, viewer, page + 1);
         }
         int row = slot / 9;
         int column = slot % 9;
         if (row < heads.size() && (column == 0 || column == CARDS_PER_ROW)) {
-            return game.player(heads.get(row)).map(gp -> detail(game, gp, page)).orElse(null);
+            return game.player(heads.get(row)).map(gp -> detail(game, viewer, gp, page)).orElse(null);
         }
         return null;
     }
@@ -133,8 +136,9 @@ final class AbilityMenu implements InventoryHolder {
         return item;
     }
 
-    private static ItemStack cardIcon(Card card, int count) {
+    private static ItemStack cardIcon(Card card, int count, Player viewer) {
         ItemStack item = ItemStack.of(card.rarity().icon(), Math.min(count, 64));
+        CardArt.apply(item, card, viewer);
         item.editMeta(meta -> {
             meta.displayName(plain(card.displayName(), card.rarity().color()).decoration(TextDecoration.BOLD, true));
             List<Component> lore = new ArrayList<>();

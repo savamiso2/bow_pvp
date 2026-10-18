@@ -5,6 +5,7 @@ import io.github.savamiso2.bowrounds.arena.MapBuilder;
 import io.github.savamiso2.bowrounds.command.BowRoundsCommand;
 import io.github.savamiso2.bowrounds.game.AbilityListener;
 import io.github.savamiso2.bowrounds.game.ArrowListener;
+import io.github.savamiso2.bowrounds.game.CardArt;
 import io.github.savamiso2.bowrounds.game.GameListener;
 import io.github.savamiso2.bowrounds.game.GameManager;
 import io.github.savamiso2.bowrounds.game.LobbyListener;
@@ -31,6 +32,7 @@ public final class BowRounds extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ArrowListener(this, games), this);
         getServer().getPluginManager().registerEvents(new AbilityListener(this, games), this);
         getServer().getPluginManager().registerEvents(new LobbyListener(games), this);
+        getServer().getPluginManager().registerEvents(new CardArt(this), this);
 
         // 初回起動（アリーナが1つもない）なら、既製マップとロビーを自動で建てる
         if (arenas.all().isEmpty()) {

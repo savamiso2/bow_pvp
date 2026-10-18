@@ -534,7 +534,7 @@ public final class Game {
 
     /** 能力一覧のGUIを開く。 */
     public void openAbilities(Player p) {
-        p.openInventory(AbilityMenu.overview(this, 0).getInventory());
+        p.openInventory(AbilityMenu.overview(this, p, 0).getInventory());
     }
 
     void giveArrows(GamePlayer gp) {

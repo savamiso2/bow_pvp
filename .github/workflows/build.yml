@@ -22,10 +22,17 @@ jobs:
       - name: Show available paper-api 26.2 versions
         run: curl -sS https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml | grep -oE '<version>26\.2[^<]*' | tail -10 || true
       - run: gradle build --no-daemon
+      # カードの絵柄のリソースパック（resourcepack/pack を zip にする）
+      - name: Package resource pack
+        run: |
+          mkdir -p build/pack
+          cd resourcepack/pack && zip -qr -X ../../build/pack/BowRounds-pack.zip .
       - uses: actions/upload-artifact@v4
         with:
           name: BowRounds
-          path: build/libs/*.jar
+          path: |
+            build/libs/*.jar
+            build/pack/BowRounds-pack.zip
       # main に入ったら "latest" リリースの jar を差し替える（ブラウザから1クリックで落とせるように）
       - name: Publish latest jar
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -35,4 +42,4 @@ jobs:
           gh release view latest >/dev/null 2>&1 || gh release create latest --title "最新ビルド" --notes "main の最新版です。BowRounds.jar を Paper サーバーの plugins フォルダに入れてください。"
           git tag -f latest
           git push -f origin latest
-          gh release upload latest build/libs/BowRounds.jar --clobber
+          gh release upload latest build/libs/BowRounds.jar build/pack/BowRounds-pack.zip --clobber

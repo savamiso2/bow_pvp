@@ -84,7 +84,7 @@ final class CardStage {
             d.setVisibleByDefault(false);
             d.setPersistent(false);
             d.setBillboard(Display.Billboard.CENTER);
-            d.setItemStack(icon(card));
+            d.setItemStack(icon(card, viewer));
             // せり上がる前の位置（下に沈めて小さく）
             d.setTransformation(transform(-1.2f, 0.01f));
             viewer.showEntity(plugin, d);
@@ -255,7 +255,12 @@ final class CardStage {
         return text;
     }
 
-    private static ItemStack icon(Card card) {
+    private static ItemStack icon(Card card, Player viewer) {
+        if (CardArt.hasPack(viewer)) {
+            ItemStack art = ItemStack.of(Material.PAPER);
+            CardArt.apply(art, card, viewer);
+            return art;
+        }
         Material material = switch (card) {
             case SPREAD -> Material.SPECTRAL_ARROW;
             case BOUNCE -> Material.SLIME_BALL;

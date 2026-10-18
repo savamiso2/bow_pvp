@@ -37,3 +37,9 @@ cards:
   # 重ね取りの上限（大人数での負荷対策）
   max-extra-arrows: 6
   max-bounces: 3
+
+# カードの絵柄（リソースパック）。参加時に配り、読み込めた人にだけカードの見た目が変わる
+resource-pack:
+  enabled: true
+  url: https://github.com/savamiso2/bow_pvp/releases/latest/download/BowRounds-pack.zip
+  required: false # true にすると、断った人はサーバーに入れない
