@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -166,7 +167,7 @@ final class AbilityMenu implements InventoryHolder {
         return item;
     }
 
-    private static Component plain(String text, NamedTextColor color) {
+    private static Component plain(String text, TextColor color) {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
