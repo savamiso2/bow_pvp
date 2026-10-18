@@ -6,6 +6,10 @@ ROUNDS 風のローグライク弓PvP を Minecraft Paper プラグインとし�
 - 設計: [docs/game-design.md](docs/game-design.md)
 - 対象: Paper 26.2 / Java 25
 
+## ダウンロード
+
+[BowRounds.jar（最新版）](https://github.com/savamiso2/bow_pvp/releases/latest/download/BowRounds.jar) をクリックするとダウンロードできます。Paper サーバーの `plugins` フォルダに入れて、サーバーを再起動してください。
+
 ## ビルド
 
 ```
