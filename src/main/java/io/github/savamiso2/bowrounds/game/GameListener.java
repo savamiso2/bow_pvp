@@ -180,7 +180,7 @@ public final class GameListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        games.leave(event.getPlayer());
+        games.quit(event.getPlayer());
     }
 
     // ---- インベントリ ----

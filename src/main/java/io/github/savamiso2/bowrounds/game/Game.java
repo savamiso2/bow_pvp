@@ -569,11 +569,9 @@ public final class Game {
         p.setAllowFlight(false);
         p.setFlying(false);
         p.setExp(0f);
-        p.setGameMode(GameMode.SURVIVAL);
         AttributeInstance health = p.getAttribute(Attribute.MAX_HEALTH);
         if (health != null) {
             health.setBaseValue(health.getDefaultValue());
-            p.setHealth(health.getValue());
         }
         AttributeInstance speed = p.getAttribute(Attribute.MOVEMENT_SPEED);
         if (speed != null) {
@@ -581,8 +579,7 @@ public final class Game {
         }
         p.hideBossBar(bossBar);
         p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-        Location lobby = plugin.arenas().lobby();
-        p.teleport(lobby != null ? lobby : p.getWorld().getSpawnLocation());
+        manager.sendToLobby(p);
     }
 
     // ---- ボーダー ----
