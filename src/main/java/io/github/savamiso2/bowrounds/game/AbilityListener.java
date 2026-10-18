@@ -16,17 +16,14 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 /**
- * 全員の基本操作の左クリックガードと、ダッシュなどの能力。
+ * 全員の基本操作の左クリックガード。衝撃波・ブリンク・ダッシュなどの能力もガードと同時に発動する。
  * ガードで矢を防ぐ・跳ね返す処理は ArrowListener 側。
  */
 public final class AbilityListener implements Listener {
-
-    private static final int DOUBLE_SNEAK_TICKS = 8;
 
     private final BowRounds plugin;
     private final GameManager games;
@@ -75,6 +72,9 @@ public final class AbilityListener implements Listener {
             if (stats.guardBlinkDistance > 0) {
                 blink(player, stats.guardBlinkDistance);
             }
+            if (stats.guardDashPower > 0) {
+                dash(player, stats.guardDashPower);
+            }
         });
     }
 
@@ -104,6 +104,16 @@ public final class AbilityListener implements Listener {
         center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.6f);
     }
 
+    private void dash(Player player, double power) {
+        Vector direction = player.getLocation().getDirection().setY(0);
+        if (direction.lengthSquared() < 1e-4) {
+            return;
+        }
+        player.setVelocity(direction.normalize().multiply(power).setY(0.2));
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 0.8f, 1.2f);
+        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 8, 0.2, 0.1, 0.2, 0.02);
+    }
+
     /** 向いている水平方向へ、壁の手前まで瞬間移動。 */
     private void blink(Player player, double distance) {
         Location from = player.getLocation();
@@ -127,35 +137,6 @@ public final class AbilityListener implements Listener {
                 return;
             }
         }
-    }
-
-    /** スニーク2回でダッシュ（ダッシュカード）。 */
-    @EventHandler(ignoreCancelled = true)
-    public void onSneak(PlayerToggleSneakEvent event) {
-        if (!event.isSneaking()) {
-            return;
-        }
-        Player player = event.getPlayer();
-        games.gamePlayer(player).ifPresent(gp -> {
-            Game game = games.game().orElseThrow();
-            int now = Bukkit.getCurrentTick();
-            boolean doubleTap = now - gp.lastSneakTick <= DOUBLE_SNEAK_TICKS;
-            gp.lastSneakTick = now;
-            PlayerStats stats = gp.stats();
-            if (!doubleTap || stats.dashLevel <= 0 || game.state() != GameState.PLAYING
-                    || !gp.alive || now < gp.dashReadyTick) {
-                return;
-            }
-            gp.dashReadyTick = now + stats.dashCooldownTicks(plugin.settings());
-            gp.lastSneakTick = -100;
-            Vector direction = player.getLocation().getDirection().setY(0);
-            if (direction.lengthSquared() < 1e-4) {
-                return;
-            }
-            player.setVelocity(direction.normalize().multiply(1.4).setY(0.2));
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 0.8f, 1.2f);
-            player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 8, 0.2, 0.1, 0.2, 0.02);
-        });
     }
 
     /** XPバーにガードのクールダウンを表示（満タン＝使える）。 */

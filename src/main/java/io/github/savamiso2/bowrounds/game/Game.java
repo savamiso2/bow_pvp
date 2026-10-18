@@ -387,7 +387,6 @@ public final class Game {
         gp.airJumpsLeft = stats.airJumps;
         gp.guardUntilTick = 0;
         gp.guardReadyTick = 0;
-        gp.dashReadyTick = 0;
 
         p.closeInventory();
         p.setGameMode(GameMode.ADVENTURE);

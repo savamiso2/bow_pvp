@@ -25,8 +25,6 @@ public final class GamePlayer {
     UUID lastDamager;
     int guardUntilTick;
     int guardReadyTick;
-    int dashReadyTick;
-    int lastSneakTick = -100;
     List<Card> offer = List.of();
     boolean picked;
 

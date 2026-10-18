@@ -32,9 +32,7 @@ public final class PlayerStats {
     public boolean guardReflect;
     public double guardShockwaveRadius;
     public double guardBlinkDistance;
-
-    // ダッシュ（スニーク2回）
-    public int dashLevel;
+    public double guardDashPower;
 
     public static PlayerStats compute(Settings settings, List<Card> cards) {
         PlayerStats stats = new PlayerStats();
@@ -59,10 +57,5 @@ public final class PlayerStats {
 
     public int guardCooldownTicks(Settings settings) {
         return Math.max(10, (int) Math.round(settings.guardCooldownTicks() * guardCooldownMultiplier) + guardCooldownBonusTicks);
-    }
-
-    /** ダッシュのクールダウン。重ね取りするほど短くなる。 */
-    public int dashCooldownTicks(Settings settings) {
-        return Math.max(10, (int) Math.round(settings.dashCooldownTicks() * Math.pow(0.8, dashLevel - 1)));
     }
 }

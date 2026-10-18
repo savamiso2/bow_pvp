@@ -64,7 +64,6 @@ public enum Card {
         s.knockback += 1.0;
         s.damageMultiplier *= 0.8;
     }),
-    DASH("ダッシュ", Rarity.COMMON, "スニーク2回で前方へダッシュ", null, s -> s.dashLevel += 1),
 
     // ---- ガード強化（左クリックのガードは全員の基本操作） ----
     REFLECT("反射", Rarity.RARE, "ガードで受けた矢を撃った相手へ跳ね返す", "ガードCD +1秒", s -> {
@@ -76,6 +75,7 @@ public enum Card {
         s.guardCooldownMultiplier *= 0.7;
         s.damageMultiplier *= 0.9;
     }),
+    DASH("ダッシュ", Rarity.COMMON, "ガード時、向いている方向へダッシュ", null, s -> s.guardDashPower += 1.4),
     BLINK_GUARD("ブリンクガード", Rarity.RARE, "ガード時、向いている方向へ瞬間移動", null, s -> s.guardBlinkDistance += 5);
 
     private final String displayName;
