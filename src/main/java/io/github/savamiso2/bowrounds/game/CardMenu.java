@@ -8,6 +8,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -39,12 +40,13 @@ public final class CardMenu implements InventoryHolder {
             inventory.setItem(i, filler);
         }
         for (int i = 0; i < slots.length; i++) {
-            inventory.setItem(slots[i], icon(offer.get(i), gamePlayer.count(offer.get(i))));
+            inventory.setItem(slots[i], icon(offer.get(i), gamePlayer.count(offer.get(i)), gamePlayer.player()));
         }
     }
 
-    private static ItemStack icon(Card card, long owned) {
+    private static ItemStack icon(Card card, long owned, Player viewer) {
         ItemStack item = ItemStack.of(card.rarity().icon());
+        CardArt.apply(item, card, viewer);
         item.editMeta(meta -> {
             meta.displayName(plain(card.displayName(), card.rarity().color()).decoration(TextDecoration.BOLD, true));
             List<Component> lore = new ArrayList<>();
