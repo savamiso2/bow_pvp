@@ -9,6 +9,7 @@ import com.mojang.brigadier.context.CommandContext;
 import io.github.savamiso2.bowrounds.BowRounds;
 import io.github.savamiso2.bowrounds.arena.Arena;
 import io.github.savamiso2.bowrounds.arena.MapBuilder;
+import io.github.savamiso2.bowrounds.game.CardList;
 import io.github.savamiso2.bowrounds.game.Game;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -25,7 +26,7 @@ import org.bukkit.entity.Player;
 /**
  * /bowrounds（/br）
  * <pre>
- * status                                         （/br start でサーバーにいる全員が参加）
+ * status | cards（全員の能力一覧）                                         （/br start でサーバーにいる全員が参加）
  * start | stop | setlobby                         （管理者）
  * arena setup                                    （専用ワールドに既製マップ3種とロビーを建てる）
  * arena create &lt;名前&gt; &lt;最大人数&gt;              （今いる場所が中心）
@@ -48,6 +49,13 @@ public final class BowRoundsCommand {
     public void register(Commands commands) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("bowrounds")
                 .then(Commands.literal("status").executes(this::status))
+                .then(Commands.literal("cards").executes(ctx -> {
+                    CommandSender sender = ctx.getSource().getSender();
+                    plugin.games().game().ifPresentOrElse(
+                            g -> CardList.lines(g).forEach(sender::sendMessage),
+                            () -> sender.sendMessage(Component.text("試合は行われていません", NamedTextColor.GRAY)));
+                    return Command.SINGLE_SUCCESS;
+                }))
                 .then(Commands.literal("start").requires(this::admin).executes(ctx -> {
                     Optional<String> error = plugin.games().start();
                     error.ifPresentOrElse(

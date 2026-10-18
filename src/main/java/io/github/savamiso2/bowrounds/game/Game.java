@@ -390,6 +390,7 @@ public final class Game {
         closeStages();
         bossBar.color(BossBar.Color.YELLOW);
         cancelTimer();
+        broadcast(CardList.hint());
         nextRound();
     }
 
