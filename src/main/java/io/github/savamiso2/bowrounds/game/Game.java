@@ -55,6 +55,7 @@ public final class Game {
     private final NamespacedKey speedKey;
     private final Map<UUID, GamePlayer> players = new LinkedHashMap<>();
     private final List<GamePlayer> eliminated = new ArrayList<>();
+    private final Map<UUID, CardStage> stages = new LinkedHashMap<>();
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
     private final Scoreboard scoreboard;
     private final Objective sidebar;
@@ -63,6 +64,8 @@ public final class Game {
     private int round;
     private Arena arena;
     private BukkitTask task;
+    private BukkitTask hoverTask;
+    private boolean finishing;
     private int phaseSeconds;
     private double originalBorderSize;
     private Location originalBorderCenter;
@@ -246,12 +249,21 @@ public final class Game {
             return;
         }
         state = GameState.CARD_PICK;
-        // 観戦モードだとGUIを操作できないので、全員アリーナ中央に戻してから開く
-        for (GamePlayer gp : online()) {
+        // 観戦モードだとGUIを操作できないので、全員アリーナ中央に戻す。カードに集中できるよう他の人は隠す
+        List<GamePlayer> online = online();
+        for (GamePlayer gp : online) {
             Player p = gp.player();
             p.setGameMode(GameMode.ADVENTURE);
             p.setGlowing(false);
-            p.teleport(arena.center());
+            Location center = arena.center();
+            center.setYaw(p.getLocation().getYaw());
+            center.setPitch(0f);
+            p.teleport(center);
+            for (GamePlayer other : online) {
+                if (other != gp) {
+                    p.hidePlayer(plugin, other.player());
+                }
+            }
         }
         int size = ranking.size();
         int bottomFrom = (int) Math.ceil(size * (1.0 - settings.bottomBonusRatio()));
@@ -264,7 +276,17 @@ public final class Game {
             }
             boolean bottom = i >= bottomFrom;
             gp.offer = Card.draw(settings.offerSize() + (bottom ? 1 : 0), bottom);
-            openMenu(gp);
+            if (settings.cardStage()) {
+                CardStage stage = new CardStage(plugin, gp);
+                stages.put(gp.id(), stage);
+                stage.show();
+            } else {
+                openMenu(gp);
+            }
+        }
+        if (!stages.isEmpty()) {
+            hoverTask = Bukkit.getScheduler().runTaskTimer(plugin,
+                    () -> stages.values().forEach(CardStage::updateHover), 1L, 2L);
         }
         phaseSeconds = settings.cardPickSeconds();
         bossBar.name(Component.text("カード選択中…", NamedTextColor.LIGHT_PURPLE));
@@ -272,9 +294,21 @@ public final class Game {
         startTimer(this::tickCardPick);
     }
 
+    /** 3Dカード選択中のプレイヤーがクリックした：見ているカードに決定。 */
+    void stageClick(GamePlayer gp) {
+        CardStage stage = stages.get(gp.id());
+        if (stage != null && stage.hoveredCard() != null) {
+            pick(gp, stage.hoveredCard());
+        }
+    }
+
+    boolean choosingOnStage(GamePlayer gp) {
+        return state == GameState.CARD_PICK && !gp.picked && stages.containsKey(gp.id());
+    }
+
     void openMenu(GamePlayer gp) {
         Player p = gp.player();
-        if (p != null && !gp.picked && state == GameState.CARD_PICK) {
+        if (p != null && !gp.picked && state == GameState.CARD_PICK && !stages.containsKey(gp.id())) {
             p.openInventory(new CardMenu(gp).getInventory());
         }
     }
@@ -286,13 +320,21 @@ public final class Game {
         gp.picked = true;
         gp.addCard(card, settings);
         Player p = gp.player();
+        CardStage stage = stages.get(gp.id());
+        if (stage != null) {
+            stage.select(card);
+        }
         if (p != null) {
             p.closeInventory();
             p.sendMessage(Component.text("「" + card.displayName() + "」を手に入れた", card.rarity().color()));
-            p.playSound(p.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
+            if (stage == null) {
+                p.playSound(p.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
+            }
         }
-        if (players.values().stream().allMatch(g -> g.picked || g.player() == null)) {
-            finishCardPick();
+        if (!finishing && players.values().stream().allMatch(g -> g.picked || g.player() == null)) {
+            // 決定演出を見せてから次のラウンドへ
+            cancelTimer();
+            Bukkit.getScheduler().runTaskLater(plugin, this::finishCardPick, 20L);
         }
     }
 
@@ -309,15 +351,15 @@ public final class Game {
         if (state != GameState.CARD_PICK) {
             return;
         }
+        finishing = true;
         for (GamePlayer gp : players.values()) {
             if (!gp.picked && !gp.offer.isEmpty()) {
                 // 時間切れは自動で選ぶ
                 pick(gp, gp.offer.get(ThreadLocalRandom.current().nextInt(gp.offer.size())));
-                if (state != GameState.CARD_PICK) {
-                    return; // pick() が全員分そろって先に進めた
-                }
             }
         }
+        finishing = false;
+        closeStages();
         bossBar.color(BossBar.Color.YELLOW);
         cancelTimer();
         nextRound();
@@ -331,6 +373,7 @@ public final class Game {
         }
         state = GameState.FINISHED;
         cancelTimer();
+        closeStages();
         restoreBorder();
         if (announce) {
             List<GamePlayer> ranking = players.values().stream()
@@ -364,6 +407,10 @@ public final class Game {
         }
         gp.alive = false;
         gp.picked = true;
+        CardStage stage = stages.remove(gp.id());
+        if (stage != null) {
+            stage.remove();
+        }
         resetPlayer(player);
         if (state == GameState.FINISHED) {
             return;
@@ -483,6 +530,10 @@ public final class Game {
     }
 
     private void resetPlayer(Player p) {
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            p.showPlayer(plugin, other);
+            other.showPlayer(plugin, p);
+        }
         p.closeInventory();
         p.getInventory().clear();
         p.clearActivePotionEffects();
@@ -544,6 +595,23 @@ public final class Game {
 
     private List<GamePlayer> online() {
         return players.values().stream().filter(g -> g.player() != null).toList();
+    }
+
+    private void closeStages() {
+        if (hoverTask != null) {
+            hoverTask.cancel();
+            hoverTask = null;
+        }
+        stages.values().forEach(CardStage::remove);
+        stages.clear();
+        List<GamePlayer> online = online();
+        for (GamePlayer gp : online) {
+            for (GamePlayer other : online) {
+                if (other != gp) {
+                    gp.player().showPlayer(plugin, other.player());
+                }
+            }
+        }
     }
 
     private void startTimer(Runnable tick) {
