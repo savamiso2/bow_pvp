@@ -3,7 +3,7 @@ package io.github.savamiso2.bowrounds.game;
 import io.github.savamiso2.bowrounds.BowRounds;
 import io.github.savamiso2.bowrounds.card.PlayerStats;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
@@ -29,12 +30,15 @@ public final class ArrowListener implements Listener {
 
     private static final int MAX_ARROW_TICKS = 200;
     private static final double HOMING_RANGE_SQUARED = 16 * 16;
+    private static final int SPLIT_AFTER_TICKS = 8;
+    private static final double SPLIT_DEGREES = 12;
 
     private final BowRounds plugin;
     private final GameManager games;
     private final NamespacedKey shooterKey;
     private final NamespacedKey forceKey;
     private final NamespacedKey bouncesKey;
+    private final NamespacedKey splitKey;
     private final Set<AbstractArrow> active = new HashSet<>();
 
     public ArrowListener(BowRounds plugin, GameManager games) {
@@ -43,6 +47,7 @@ public final class ArrowListener implements Listener {
         this.shooterKey = new NamespacedKey(plugin, "shooter");
         this.forceKey = new NamespacedKey(plugin, "force");
         this.bouncesKey = new NamespacedKey(plugin, "bounces");
+        this.splitKey = new NamespacedKey(plugin, "split");
         Bukkit.getScheduler().runTaskTimer(plugin, this::tickArrows, 1L, 1L);
     }
 
@@ -61,7 +66,7 @@ public final class ArrowListener implements Listener {
             PlayerStats stats = gp.stats();
             double force = Math.max(0.1, Math.min(1.0, event.getForce()));
             Vector velocity = arrow.getVelocity().multiply(stats.arrowSpeedMultiplier);
-            setup(arrow, shooter.getUniqueId(), force, stats.bounces, stats.noGravity, velocity);
+            setup(arrow, shooter.getUniqueId(), force, stats, stats.bounces, stats.split, velocity);
 
             // 散弾：左右交互に広げて追加発射（弾は消費しない）
             for (int i = 1; i <= stats.extraArrows; i++) {
@@ -69,36 +74,48 @@ public final class ArrowListener implements Listener {
                 double angle = Math.toRadians(stats.spreadDegrees * ((i + 1) / 2) * side);
                 Vector extraVelocity = velocity.clone().rotateAroundY(angle);
                 Arrow extra = shooter.launchProjectile(Arrow.class, extraVelocity);
-                setup(extra, shooter.getUniqueId(), force, stats.bounces, stats.noGravity, extraVelocity);
+                setup(extra, shooter.getUniqueId(), force, stats, stats.bounces, stats.split, extraVelocity);
             }
             Bukkit.getScheduler().runTask(plugin, () -> game.afterShot(gp));
         });
     }
 
-    private void setup(AbstractArrow arrow, UUID shooter, double force, int bounces, boolean noGravity, Vector velocity) {
+    private void setup(AbstractArrow arrow, UUID shooter, double force, PlayerStats stats, int bounces, boolean split,
+                       Vector velocity) {
         arrow.setVelocity(velocity);
-        arrow.setGravity(!noGravity);
+        arrow.setGravity(!stats.noGravity);
         arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
         arrow.setCritical(force >= 1.0);
+        arrow.setPierceLevel(Math.min(127, stats.pierce));
         PersistentDataContainer pdc = arrow.getPersistentDataContainer();
         pdc.set(shooterKey, PersistentDataType.STRING, shooter.toString());
         pdc.set(forceKey, PersistentDataType.DOUBLE, force);
         pdc.set(bouncesKey, PersistentDataType.INTEGER, bounces);
+        pdc.set(splitKey, PersistentDataType.BOOLEAN, split);
         active.add(arrow);
+    }
+
+    /** shooter の矢として新しく1本飛ばす（跳弾・分裂・反射用）。 */
+    private Arrow spawnFor(GamePlayer shooter, Location from, Vector velocity, double force, int bounces) {
+        Arrow next = from.getWorld().spawnArrow(from, velocity, (float) velocity.length(), 0f);
+        Player shooterPlayer = shooter.player();
+        if (shooterPlayer != null) {
+            next.setShooter(shooterPlayer);
+        }
+        setup(next, shooter.id(), force, shooter.stats(), bounces, false, velocity);
+        return next;
     }
 
     /** 追尾の舵取りと、飛びっぱなしの矢（重力無視など）の掃除。 */
     private void tickArrows() {
-        Iterator<AbstractArrow> it = active.iterator();
-        while (it.hasNext()) {
-            AbstractArrow arrow = it.next();
+        for (AbstractArrow arrow : List.copyOf(active)) {
             if (!arrow.isValid() || arrow.isInBlock()) {
-                it.remove();
+                active.remove(arrow);
                 continue;
             }
             if (arrow.getTicksLived() > MAX_ARROW_TICKS) {
                 arrow.remove();
-                it.remove();
+                active.remove(arrow);
                 continue;
             }
             Optional<GamePlayer> shooter = shooter(arrow);
@@ -108,6 +125,10 @@ public final class ArrowListener implements Listener {
             double homing = shooter.get().stats().homing;
             if (homing > 0) {
                 steer(arrow, shooter.get(), homing);
+            }
+            if (arrow.getTicksLived() == SPLIT_AFTER_TICKS
+                    && arrow.getPersistentDataContainer().getOrDefault(splitKey, PersistentDataType.BOOLEAN, false)) {
+                split(arrow, shooter.get());
             }
         }
     }
@@ -147,6 +168,18 @@ public final class ArrowListener implements Listener {
         arrow.setVelocity(steered);
     }
 
+    private void split(AbstractArrow arrow, GamePlayer shooter) {
+        arrow.getPersistentDataContainer().set(splitKey, PersistentDataType.BOOLEAN, false);
+        Vector velocity = arrow.getVelocity();
+        double force = arrow.getPersistentDataContainer().getOrDefault(forceKey, PersistentDataType.DOUBLE, 1.0);
+        int bounces = arrow.getPersistentDataContainer().getOrDefault(bouncesKey, PersistentDataType.INTEGER, 0);
+        Location from = arrow.getLocation();
+        for (double side : new double[] {-1, 1}) {
+            spawnFor(shooter, from, velocity.clone().rotateAroundY(Math.toRadians(SPLIT_DEGREES * side)), force, bounces);
+        }
+        from.getWorld().spawnParticle(Particle.FIREWORK, from, 6, 0.1, 0.1, 0.1, 0.02);
+    }
+
     @EventHandler
     public void onHit(ProjectileHitEvent event) {
         if (!(event.getEntity() instanceof AbstractArrow arrow)) {
@@ -160,6 +193,15 @@ public final class ArrowListener implements Listener {
         PlayerStats stats = shooter.stats();
         Location location = arrow.getLocation();
 
+        if (event.getHitEntity() instanceof Player victim && !victim.getUniqueId().equals(shooter.id())) {
+            Optional<GamePlayer> guard = games.gamePlayer(victim).filter(GamePlayer::guarding);
+            if (guard.isPresent()) {
+                event.setCancelled(true);
+                blocked(arrow, shooter, guard.get(), victim);
+                return;
+            }
+        }
+
         if (stats.explosionPower > 0) {
             location.getWorld().createExplosion(location, stats.explosionPower, false, false, shooter.player());
         }
@@ -169,9 +211,30 @@ public final class ArrowListener implements Listener {
             if (bounces > 0) {
                 bounce(arrow, shooter, event.getHitBlockFace().getDirection(), bounces - 1);
             }
+            active.remove(arrow);
+            Bukkit.getScheduler().runTask(plugin, arrow::remove);
         }
+        // プレイヤーに当たった矢は消さない（貫通のため。拾えない設定なのでそのうち消える）
+    }
+
+    /** ガード成功：矢を消し、反射カードがあれば撃った相手へ跳ね返す。 */
+    private void blocked(AbstractArrow arrow, GamePlayer attacker, GamePlayer defender, Player victim) {
+        Vector incoming = arrow.getVelocity();
         active.remove(arrow);
-        Bukkit.getScheduler().runTask(plugin, arrow::remove);
+        arrow.remove();
+        Location at = victim.getEyeLocation();
+        victim.getWorld().playSound(at, Sound.ITEM_SHIELD_BLOCK, 1f, 0.8f);
+        victim.getWorld().spawnParticle(Particle.CRIT, at, 15, 0.3, 0.3, 0.3, 0.2);
+        if (!defender.stats().guardReflect) {
+            return;
+        }
+        double speed = Math.max(1.5, incoming.length());
+        Player target = attacker.player();
+        Vector direction = target != null && target.getWorld().equals(at.getWorld())
+                ? target.getLocation().add(0, 1.0, 0).toVector().subtract(at.toVector()).normalize()
+                : incoming.multiply(-1).normalize();
+        Location from = at.clone().add(direction.clone().multiply(0.8));
+        spawnFor(defender, from, direction.multiply(speed), 1.0, defender.stats().bounces);
     }
 
     private void bounce(AbstractArrow arrow, GamePlayer shooter, Vector normal, int remaining) {
@@ -180,12 +243,7 @@ public final class ArrowListener implements Listener {
         Vector reflected = velocity.clone().subtract(normal.clone().multiply(2 * velocity.dot(normal)));
         Location from = arrow.getLocation().add(normal.clone().multiply(0.3));
         double force = arrow.getPersistentDataContainer().getOrDefault(forceKey, PersistentDataType.DOUBLE, 1.0);
-        Arrow next = from.getWorld().spawnArrow(from, reflected, (float) reflected.length(), 0f);
-        Player shooterPlayer = shooter.player();
-        if (shooterPlayer != null) {
-            next.setShooter(shooterPlayer);
-        }
-        setup(next, shooter.id(), force, remaining, !arrow.hasGravity(), reflected);
+        spawnFor(shooter, from, reflected, force, remaining);
         from.getWorld().spawnParticle(Particle.CRIT, from, 6, 0.1, 0.1, 0.1, 0.05);
     }
 
@@ -205,6 +263,10 @@ public final class ArrowListener implements Listener {
             return;
         }
         GamePlayer target = victimOpt.get();
+        if (target.guarding()) {
+            event.setCancelled(true); // 念のため（通常は onHit で止まっている）
+            return;
+        }
         PlayerStats stats = shooter.stats();
         double force = arrow.getPersistentDataContainer().getOrDefault(forceKey, PersistentDataType.DOUBLE, 1.0);
         double damage = plugin.settings().baseDamage() * force * stats.damageMultiplier;
@@ -219,7 +281,13 @@ public final class ArrowListener implements Listener {
             double max = stats.maxHealth;
             shooterPlayer.setHealth(Math.min(max, shooterPlayer.getHealth() + damage * stats.lifesteal));
         }
-        Bukkit.getScheduler().runTask(plugin, () -> victim.setArrowsInBody(0));
+        Vector push = arrow.getVelocity().setY(0);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            victim.setArrowsInBody(0);
+            if (stats.knockback > 0 && push.lengthSquared() > 1e-4) {
+                victim.setVelocity(push.normalize().multiply(0.7 * stats.knockback).setY(0.4));
+            }
+        });
     }
 
     private Optional<GamePlayer> shooter(AbstractArrow arrow) {

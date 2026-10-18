@@ -2,6 +2,7 @@ package io.github.savamiso2.bowrounds;
 
 import io.github.savamiso2.bowrounds.arena.ArenaManager;
 import io.github.savamiso2.bowrounds.command.BowRoundsCommand;
+import io.github.savamiso2.bowrounds.game.AbilityListener;
 import io.github.savamiso2.bowrounds.game.ArrowListener;
 import io.github.savamiso2.bowrounds.game.GameListener;
 import io.github.savamiso2.bowrounds.game.GameManager;
@@ -24,6 +25,7 @@ public final class BowRounds extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new GameListener(games), this);
         getServer().getPluginManager().registerEvents(new ArrowListener(this, games), this);
+        getServer().getPluginManager().registerEvents(new AbilityListener(this, games), this);
 
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 new BowRoundsCommand(this).register(event.registrar()));

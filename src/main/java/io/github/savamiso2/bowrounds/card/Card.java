@@ -51,7 +51,32 @@ public enum Card {
     EXPLOSIVE("爆裂矢", Rarity.EPIC, "着弾地点で小爆発", "装填数 -1", s -> {
         s.explosionPower += 1.2f;
         s.magazine -= 1;
-    });
+    }),
+    PIERCE("貫通", Rarity.RARE, "矢がプレイヤーを1人貫通", "ダメージ -15%", s -> {
+        s.pierce += 1;
+        s.damageMultiplier *= 0.85;
+    }),
+    SPLIT("分裂", Rarity.EPIC, "矢が飛んでから空中で3本に分かれる", "装填数 -1", s -> {
+        s.split = true;
+        s.magazine -= 1;
+    }),
+    KNOCKBACK("ノックバック", Rarity.COMMON, "命中した相手を大きく吹き飛ばす", "ダメージ -20%", s -> {
+        s.knockback += 1.0;
+        s.damageMultiplier *= 0.8;
+    }),
+    DASH("ダッシュ", Rarity.COMMON, "スニーク2回で前方へダッシュ", null, s -> s.dashLevel += 1),
+
+    // ---- ガード強化（左クリックのガードは全員の基本操作） ----
+    REFLECT("反射", Rarity.RARE, "ガードで受けた矢を撃った相手へ跳ね返す", "ガードCD +1秒", s -> {
+        s.guardReflect = true;
+        s.guardCooldownBonusTicks += 20;
+    }),
+    SHOCKWAVE("衝撃波", Rarity.RARE, "ガード時、周囲の敵を吹き飛ばす", null, s -> s.guardShockwaveRadius += 4),
+    GUARD_MASTER("ガード上手", Rarity.COMMON, "ガードCD -30%", "ダメージ -10%", s -> {
+        s.guardCooldownMultiplier *= 0.7;
+        s.damageMultiplier *= 0.9;
+    }),
+    BLINK_GUARD("ブリンクガード", Rarity.RARE, "ガード時、向いている方向へ瞬間移動", null, s -> s.guardBlinkDistance += 5);
 
     private final String displayName;
     private final Rarity rarity;

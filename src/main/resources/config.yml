@@ -21,6 +21,9 @@ player:
   reload-ticks: 40
   base-damage: 4.0       # フルチャージ時の矢ダメージ
   arrow-speed: 1.0       # 矢の速度倍率
+  guard-duration-ticks: 6   # 左クリックのガードが有効な時間（0.3秒）
+  guard-cooldown-ticks: 80  # ガードのクールダウン（4秒）
+  dash-cooldown-ticks: 60   # ダッシュカードのクールダウン
 
 cards:
   # 何枚から選ぶか。下位プレイヤーは +1 枚
