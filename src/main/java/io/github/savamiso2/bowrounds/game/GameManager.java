@@ -1,22 +1,19 @@
 package io.github.savamiso2.bowrounds.game;
 
 import io.github.savamiso2.bowrounds.BowRounds;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 
-/** 参加待ちリストと、今動いている試合（同時に1つ）を管理する。 */
+/** 今動いている試合（同時に1つ）を管理する。サーバーにいる全員が参加する。 */
 public final class GameManager {
 
     private final BowRounds plugin;
-    private final Set<UUID> queue = new LinkedHashSet<>();
     private Game game;
 
     public GameManager(BowRounds plugin) {
@@ -32,30 +29,26 @@ public final class GameManager {
         return game == null ? Optional.empty() : game.player(player.getUniqueId());
     }
 
-    public boolean join(Player player) {
-        if (!queue.add(player.getUniqueId())) {
-            player.sendMessage(Component.text("すでに参加しています", NamedTextColor.GRAY));
-            return false;
-        }
-        broadcastQueue(Component.text(player.getName() + " が参加（" + queueSize() + "人）", NamedTextColor.GREEN));
-        if (game != null) {
-            player.sendMessage(Component.text("試合中です。次の試合から参加します", NamedTextColor.YELLOW));
-        }
-        return true;
-    }
-
-    public void leave(Player player) {
-        boolean wasQueued = queue.remove(player.getUniqueId());
+    /** サーバーを抜けた人を試合から外す。 */
+    public void quit(Player player) {
         if (game != null) {
             game.removePlayer(player);
         }
-        if (wasQueued) {
-            player.sendMessage(Component.text("参加をやめました", NamedTextColor.GRAY));
-        }
     }
 
-    public int queueSize() {
-        return queuedPlayers().size();
+    /** ロビーへ送り、待機用の状態にする（アドベンチャー・全回復・持ち物なし）。 */
+    public void sendToLobby(Player player) {
+        player.getInventory().clear();
+        player.setGameMode(GameMode.ADVENTURE);
+        AttributeInstance health = player.getAttribute(Attribute.MAX_HEALTH);
+        if (health != null) {
+            player.setHealth(health.getValue());
+        }
+        player.setFoodLevel(20);
+        player.setSaturation(5f);
+        player.setFallDistance(0f);
+        Location lobby = plugin.arenas().lobby();
+        player.teleport(lobby != null ? lobby : player.getWorld().getSpawnLocation());
     }
 
     /** 試合を始める。始められなければ理由を返す。 */
@@ -63,9 +56,13 @@ public final class GameManager {
         if (game != null) {
             return Optional.of("すでに試合中です");
         }
-        List<Player> players = queuedPlayers();
+        // サーバーにいる全員で遊ぶ（観戦モードにしている人だけ除く）
+        List<Player> players = Bukkit.getOnlinePlayers().stream()
+                .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
+                .map(p -> (Player) p)
+                .toList();
         if (players.size() < plugin.settings().minPlayers()) {
-            return Optional.of("参加者が足りません（" + players.size() + " / " + plugin.settings().minPlayers() + "人）");
+            return Optional.of("人数が足りません（" + players.size() + " / " + plugin.settings().minPlayers() + "人）");
         }
         if (plugin.arenas().pick(players.size(), null).isEmpty()) {
             return Optional.of("スポーン地点のあるアリーナがありません");
@@ -84,16 +81,6 @@ public final class GameManager {
     void onFinish(Game finished) {
         if (game == finished) {
             game = null;
-        }
-    }
-
-    private List<Player> queuedPlayers() {
-        return queue.stream().map(Bukkit::getPlayer).filter(Objects::nonNull).toList();
-    }
-
-    private void broadcastQueue(Component message) {
-        for (Player p : queuedPlayers()) {
-            p.sendMessage(message);
         }
     }
 }

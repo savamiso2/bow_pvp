@@ -18,13 +18,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
  * /bowrounds（/br）
  * <pre>
- * join | leave | status
+ * status                                         （/br start でサーバーにいる全員が参加）
  * start | stop | setlobby                         （管理者）
  * arena setup                                    （専用ワールドに既製マップ3種とロビーを建てる）
  * arena create &lt;名前&gt; &lt;最大人数&gt;              （今いる場所が中心）
@@ -46,11 +47,6 @@ public final class BowRoundsCommand {
 
     public void register(Commands commands) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("bowrounds")
-                .then(Commands.literal("join")
-                        .requires(s -> s.getSender().hasPermission("bowrounds.play"))
-                        .executes(playerOnly((p, ctx) -> plugin.games().join(p))))
-                .then(Commands.literal("leave")
-                        .executes(playerOnly((p, ctx) -> plugin.games().leave(p))))
                 .then(Commands.literal("status").executes(this::status))
                 .then(Commands.literal("start").requires(this::admin).executes(ctx -> {
                     Optional<String> error = plugin.games().start();
@@ -150,7 +146,7 @@ public final class BowRoundsCommand {
 
     private int status(CommandContext<CommandSourceStack> ctx) {
         CommandSender sender = ctx.getSource().getSender();
-        sender.sendMessage(Component.text("参加待ち: " + plugin.games().queueSize() + "人", NamedTextColor.WHITE));
+        sender.sendMessage(Component.text("オンライン: " + Bukkit.getOnlinePlayers().size() + "人", NamedTextColor.WHITE));
         plugin.games().game().ifPresentOrElse(
                 g -> sender.sendMessage(Component.text("試合中（" + g.state() + "）参加者 " + g.players().size() + "人", NamedTextColor.YELLOW)),
                 () -> sender.sendMessage(Component.text("試合は行われていません", NamedTextColor.GRAY)));
