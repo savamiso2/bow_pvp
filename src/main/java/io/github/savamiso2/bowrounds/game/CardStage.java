@@ -34,6 +34,10 @@ final class CardStage {
     private static final double SPACING = 1.25;
     private static final double HOVER_COS = Math.cos(Math.toRadians(13));
     private static final float CARD_SCALE = 0.9f;
+    /** アイコンは少し上、説明文はその下へ離して置く（説明文は下端から上に伸びるので、下端をアイコンより十分下げる）。 */
+    private static final float ICON_Y = 0.2f;
+    private static final double TEXT_DROP = 1.55;
+    private static final float TEXT_SCALE = 0.55f;
 
     private final BowRounds plugin;
     private final GamePlayer gamePlayer;
@@ -66,7 +70,7 @@ final class CardStage {
             double offset = SPACING * (i - (offer.size() - 1) / 2.0);
             Location position = eye.clone().add(forward.clone().multiply(DISTANCE)).add(right.clone().multiply(offset));
             ItemDisplay item = spawnItem(player, card, position);
-            TextDisplay text = spawnText(player, card, position.clone().subtract(0, 0.75, 0));
+            TextDisplay text = spawnText(player, card, position.clone().subtract(0, TEXT_DROP, 0));
             slots.add(new Slot(card, position, item, text));
 
             int index = i;
@@ -92,7 +96,7 @@ final class CardStage {
             d.setPersistent(false);
             d.setBillboard(Display.Billboard.CENTER);
             d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(110);
+            d.setLineWidth(130);
             d.setShadowed(true);
             d.setBackgroundColor(background(card.rarity(), false));
             d.text(label(card));
@@ -106,8 +110,8 @@ final class CardStage {
             return;
         }
         Slot slot = slots.get(index);
-        animate(slot.item(), transform(0f, CARD_SCALE), 10);
-        animate(slot.text(), transform(0f, 0.6f), 10);
+        animate(slot.item(), transform(ICON_Y, CARD_SCALE), 10);
+        animate(slot.text(), transform(0f, TEXT_SCALE), 10);
         Player player = gamePlayer.player();
         if (player == null) {
             return;
@@ -129,11 +133,12 @@ final class CardStage {
             return;
         }
         Location eye = player.getEyeLocation();
-        Vector look = eye.getDirection();
+        // 縦方向は甘めに判定する（アイコンを見ても下の説明文を読んでいても、そのカードが選ばれるように）
+        Vector look = squash(eye.getDirection());
         int best = -1;
         double bestDot = HOVER_COS;
         for (int i = 0; i < slots.size(); i++) {
-            Vector toCard = slots.get(i).position().toVector().subtract(eye.toVector()).normalize();
+            Vector toCard = squash(slots.get(i).position().clone().subtract(0, 0.6, 0).toVector().subtract(eye.toVector()));
             double dot = toCard.dot(look);
             if (dot > bestDot) {
                 bestDot = dot;
@@ -163,7 +168,7 @@ final class CardStage {
         };
         slot.item().setGlowColorOverride(glow);
         slot.item().setGlowing(on);
-        animate(slot.item(), transform(on ? 0.15f : 0f, on ? CARD_SCALE * 1.25f : CARD_SCALE), 3);
+        animate(slot.item(), transform(on ? ICON_Y + 0.15f : ICON_Y, on ? CARD_SCALE * 1.25f : CARD_SCALE), 3);
         slot.text().setBackgroundColor(background(slot.card().rarity(), on));
     }
 
@@ -216,6 +221,10 @@ final class CardStage {
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(ticks);
         display.setTransformation(to);
+    }
+
+    private static Vector squash(Vector v) {
+        return v.clone().setY(v.getY() * 0.4).normalize();
     }
 
     private static Transformation transform(float y, float scale) {
