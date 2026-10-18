@@ -26,6 +26,8 @@ import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 /** カード効果が乗った矢：散弾・跳弾・追尾・重力無視・爆発・毒・吸血とダメージ計算。 */
@@ -34,6 +36,8 @@ public final class ArrowListener implements Listener {
     private static final int MAX_ARROW_TICKS = 200;
     private static final double HOMING_RANGE_SQUARED = 16 * 16;
     private static final int SPLIT_AFTER_TICKS = 8;
+    /** バニラの判定の余裕が 0.3 まで広がりきる頃まで（2tick + 0.05/tick × 6）。 */
+    private static final int CLASSIC_MARGIN_TICKS = 10;
     private static final double SPLIT_DEGREES = 12;
 
     private final BowRounds plugin;
@@ -129,10 +133,44 @@ public final class ArrowListener implements Listener {
             if (homing > 0) {
                 steer(arrow, shooter.get(), homing);
             }
+            if (arrow.getTicksLived() < CLASSIC_MARGIN_TICKS) {
+                classicHitMargin(arrow, shooter.get());
+            }
             if (arrow.getTicksLived() == SPLIT_AFTER_TICKS
                     && arrow.getPersistentDataContainer().getOrDefault(splitKey, PersistentDataType.BOOLEAN, false)) {
                 split(arrow, shooter.get());
             }
+        }
+    }
+
+    /**
+     * 昔の当たり判定。今のバニラは撃った直後の判定の余裕が0で、飛ぶほど 0.3 ブロックまで広がる。
+     * 昔は最初から一定（0.3）だったので、広がりきるまでの間は「この tick で余裕込みなら当たる」矢を
+     * 相手の体へ向け直して、バニラの判定でそのまま当たるようにする。
+     */
+    private void classicHitMargin(AbstractArrow arrow, GamePlayer shooter) {
+        double margin = plugin.settings().arrowHitMargin();
+        Vector velocity = arrow.getVelocity();
+        double speed = velocity.length();
+        if (margin <= 0 || speed < 1e-3) {
+            return;
+        }
+        Location from = arrow.getLocation();
+        RayTraceResult hit = from.getWorld().rayTraceEntities(from, velocity, speed, margin, e ->
+                e instanceof Player p && !p.getUniqueId().equals(shooter.id())
+                        && games.gamePlayer(p).filter(g -> g.alive).isPresent());
+        if (hit == null || hit.getHitEntity() == null) {
+            return;
+        }
+        BoundingBox body = hit.getHitEntity().getBoundingBox().clone().expand(-0.05);
+        Vector point = hit.getHitPosition();
+        Vector inside = new Vector(
+                Math.clamp(point.getX(), body.getMinX(), body.getMaxX()),
+                Math.clamp(point.getY(), body.getMinY(), body.getMaxY()),
+                Math.clamp(point.getZ(), body.getMinZ(), body.getMaxZ()));
+        Vector aim = inside.subtract(from.toVector());
+        if (aim.lengthSquared() > 1e-6) {
+            arrow.setVelocity(aim.normalize().multiply(speed));
         }
     }
 

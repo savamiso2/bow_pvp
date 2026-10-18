@@ -23,6 +23,8 @@ player:
   base-damage: 4.0       # 矢1本のダメージ
   explosion-damage: 3.0  # 爆裂矢の爆風ダメージ（範囲内なら一律）
   arrow-speed: 1.0       # 矢の速度倍率
+  # 矢の当たり判定の余裕（ブロック）。昔のマイクラと同じく撃った直後から一定。0.3 = 昔のバニラ、0 = 余裕なし
+  arrow-hit-margin: 0.3
   guard-duration-ticks: 6   # 左クリックのガードが有効な時間（0.3秒）
   guard-cooldown-ticks: 80  # ガードのクールダウン（4秒）
 
