@@ -86,7 +86,7 @@ final class CardStage {
             d.setBillboard(Display.Billboard.CENTER);
             d.setItemStack(icon(card, viewer));
             // せり上がる前の位置（下に沈めて小さく）
-            d.setTransformation(transform(-1.2f, 0.01f));
+            d.setTransformation(itemTransform(-1.2f, 0.01f));
             viewer.showEntity(plugin, d);
         });
     }
@@ -111,7 +111,7 @@ final class CardStage {
             return;
         }
         Slot slot = slots.get(index);
-        animate(slot.item(), transform(ICON_Y, CARD_SCALE), 10);
+        animate(slot.item(), itemTransform(ICON_Y, CARD_SCALE), 10);
         animate(slot.text(), transform(0f, TEXT_SCALE), 10);
         Player player = gamePlayer.player();
         if (player == null) {
@@ -169,7 +169,7 @@ final class CardStage {
         };
         slot.item().setGlowColorOverride(glow);
         slot.item().setGlowing(on);
-        animate(slot.item(), transform(on ? ICON_Y + 0.15f : ICON_Y, on ? CARD_SCALE * 1.25f : CARD_SCALE), 3);
+        animate(slot.item(), itemTransform(on ? ICON_Y + 0.15f : ICON_Y, on ? CARD_SCALE * 1.25f : CARD_SCALE), 3);
         slot.text().setBackgroundColor(background(slot.card().rarity(), on));
     }
 
@@ -188,13 +188,13 @@ final class CardStage {
         for (Slot slot : slots) {
             if (slot.card() == card) {
                 slot.item().setGlowing(true);
-                animate(slot.item(), transform(-0.6f, 0.05f), 12);
+                animate(slot.item(), itemTransform(-0.6f, 0.05f), 12);
                 animate(slot.text(), transform(-0.6f, 0.01f), 8);
                 if (player != null) {
                     player.spawnParticle(Particle.TOTEM_OF_UNDYING, slot.position(), 40, 0.2, 0.3, 0.2, 0.3);
                 }
             } else {
-                animate(slot.item(), transform(-1.5f, 0.01f), 10);
+                animate(slot.item(), itemTransform(-1.5f, 0.01f), 10);
                 animate(slot.text(), transform(-1.5f, 0.01f), 10);
             }
         }
@@ -226,6 +226,12 @@ final class CardStage {
 
     private static Vector squash(Vector v) {
         return v.clone().setY(v.getY() * 0.4).normalize();
+    }
+
+    /** アイテムは向きが逆に描かれる（絵柄の文字が左右反転する）ので、Y軸で半回転させて表を向ける。 */
+    private static Transformation itemTransform(float y, float scale) {
+        return new Transformation(new Vector3f(0, y, 0), new AxisAngle4f((float) Math.PI, 0, 1, 0),
+                new Vector3f(scale, scale, scale), new AxisAngle4f());
     }
 
     private static Transformation transform(float y, float scale) {
