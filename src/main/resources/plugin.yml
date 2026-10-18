@@ -1,0 +1,13 @@
+name: BowRounds
+version: '${version}'
+main: io.github.savamiso2.bowrounds.BowRounds
+api-version: '${apiVersion}'
+description: ROUNDS風のローグライク弓PvP
+author: savamiso2
+permissions:
+  bowrounds.admin:
+    description: ゲームの開始・停止とアリーナ編集
+    default: op
+  bowrounds.play:
+    description: ゲームへの参加
+    default: true

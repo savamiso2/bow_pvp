@@ -1,0 +1,31 @@
+# BowRounds 設定
+
+match:
+  rounds: 8              # 1マッチのラウンド数（合計ポイントで優勝を決める）
+  min-players: 2
+  countdown-seconds: 3
+  round-time-seconds: 90 # 経過で全員発光
+  border-shrink-after-seconds: 45
+  border-shrink-duration-seconds: 40
+  border-min-size: 8
+  card-pick-seconds: 15
+
+points:
+  kill: 1
+  # 順位ごとのポイント（1位, 2位, 3位, ...）。リストより下の順位は 0
+  placement: [5, 3, 2, 1, 1]
+
+player:
+  max-health: 10.0       # ハート5個
+  magazine: 3            # 装填数
+  reload-ticks: 40
+  base-damage: 4.0       # フルチャージ時の矢ダメージ
+  arrow-speed: 1.0       # 矢の速度倍率
+
+cards:
+  # 何枚から選ぶか。下位プレイヤーは +1 枚
+  offer-size: 3
+  bottom-bonus-ratio: 0.25 # 下位この割合は選択肢+1、レア度アップ
+  # 重ね取りの上限（大人数での負荷対策）
+  max-extra-arrows: 6
+  max-bounces: 3
