@@ -129,6 +129,7 @@ public final class ArrowListener implements Listener {
             if (shooter.isEmpty()) {
                 continue;
             }
+            Fx.trail(arrow, shooter.get().id(), shooter.get().stats());
             double homing = shooter.get().stats().homing;
             if (homing > 0) {
                 steer(arrow, shooter.get(), homing);
@@ -313,6 +314,7 @@ public final class ArrowListener implements Listener {
         double damage = plugin.settings().baseDamage() * stats.damageMultiplier;
         event.setDamage(damage);
         target.lastDamager = shooter.id();
+        Fx.hit(plugin, victim, shooter.player(), damage);
 
         if (stats.poisonTicks > 0) {
             Game.poison(victim, stats.poisonTicks);
@@ -358,6 +360,7 @@ public final class ArrowListener implements Listener {
                     cause.withCausingEntity(source);
                 }
                 victim.damage(damage, cause.build());
+                Fx.hit(plugin, victim, source, damage);
                 Vector away = victim.getLocation().toVector().subtract(at.toVector()).setY(0);
                 if (away.lengthSquared() < 1e-4) {
                     away = new Vector(0, 0, 0);
