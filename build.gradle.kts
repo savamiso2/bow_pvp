@@ -34,3 +34,7 @@ tasks.processResources {
         expand(props)
     }
 }
+
+tasks.jar {
+    archiveFileName.set("BowRounds.jar")
+}
