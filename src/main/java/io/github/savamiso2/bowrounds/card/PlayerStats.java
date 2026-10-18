@@ -43,7 +43,7 @@ public final class PlayerStats {
         for (Card card : cards) {
             card.apply(stats);
         }
-        stats.maxHealth = Math.max(2.0, stats.maxHealth);
+        stats.maxHealth = Math.max(10.0, stats.maxHealth);
         stats.magazine = Math.max(1, stats.magazine);
         stats.extraArrows = Math.min(stats.extraArrows, settings.maxExtraArrows());
         stats.bounces = Math.min(stats.bounces, settings.maxBounces());
