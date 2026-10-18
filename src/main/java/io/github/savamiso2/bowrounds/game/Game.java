@@ -27,10 +27,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
@@ -57,6 +59,7 @@ public final class Game {
     private final Map<UUID, GamePlayer> players = new LinkedHashMap<>();
     private final List<GamePlayer> eliminated = new ArrayList<>();
     private final Map<UUID, CardStage> stages = new LinkedHashMap<>();
+    private final List<Block> pickFloor = new ArrayList<>();
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
     private final Scoreboard scoreboard;
     private final Objective sidebar;
@@ -253,16 +256,19 @@ public final class Game {
             return;
         }
         state = GameState.CARD_PICK;
-        // 観戦モードだとGUIを操作できないので、全員アリーナ中央に戻す。カードに集中できるよう他の人は隠す
+        // 観戦モードだとGUIを操作できないので、全員アリーナ上空の足場へ集める（カードが壁や柱に埋まらないように）。
+        // カードに集中できるよう他の人は隠す
+        Location spot = buildPickFloor();
         List<GamePlayer> online = online();
         for (GamePlayer gp : online) {
             Player p = gp.player();
             p.setGameMode(GameMode.ADVENTURE);
             p.setGlowing(false);
-            Location center = arena.center();
-            center.setYaw(p.getLocation().getYaw());
-            center.setPitch(0f);
-            p.teleport(center);
+            p.setFallDistance(0f);
+            Location at = spot.clone();
+            at.setYaw(p.getLocation().getYaw());
+            at.setPitch(0f);
+            p.teleport(at);
             for (GamePlayer other : online) {
                 if (other != gp) {
                     p.hidePlayer(plugin, other.player());
@@ -601,7 +607,39 @@ public final class Game {
         return players.values().stream().filter(g -> g.player() != null).toList();
     }
 
+    /** カード選択用に、アリーナ上空の何もない所へバリアの足場を置き、立つ位置を返す。 */
+    private Location buildPickFloor() {
+        clearPickFloor();
+        Location center = arena.center();
+        World world = center.getWorld();
+        int x = center.getBlockX();
+        int z = center.getBlockZ();
+        int highest = center.getBlockY();
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                highest = Math.max(highest, world.getHighestBlockYAt(x + dx, z + dz));
+            }
+        }
+        int y = Math.min(highest + 20, world.getMaxHeight() - 6);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                Block block = world.getBlockAt(x + dx, y, z + dz);
+                if (block.getType().isAir()) {
+                    block.setType(Material.BARRIER, false);
+                    pickFloor.add(block);
+                }
+            }
+        }
+        return new Location(world, x + 0.5, y + 1, z + 0.5);
+    }
+
+    private void clearPickFloor() {
+        pickFloor.forEach(b -> b.setType(Material.AIR, false));
+        pickFloor.clear();
+    }
+
     private void closeStages() {
+        clearPickFloor();
         if (hoverTask != null) {
             hoverTask.cancel();
             hoverTask = null;

@@ -102,7 +102,8 @@ public final class GameListener implements Listener {
             Game game = games.game().orElseThrow();
             Location from = event.getFrom();
             Location to = event.getTo();
-            boolean frozen = game.state() == GameState.COUNTDOWN || game.choosingOnStage(gp);
+            // カード選択中は上空の小さな足場にいるので、選び終わった人も動かさない
+            boolean frozen = game.state() == GameState.COUNTDOWN || game.state() == GameState.CARD_PICK;
             if (frozen && from.distanceSquared(to) > 0.0001) {
                 Location locked = from.clone();
                 locked.setYaw(to.getYaw());
