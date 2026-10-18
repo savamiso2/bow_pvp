@@ -350,6 +350,7 @@ public final class Game {
         if (p != null) {
             p.closeInventory();
             p.sendMessage(Component.text("「" + card.displayName() + "」を手に入れた", card.rarity().color()));
+            Fx.cardReveal(plugin, p, card);
             if (stage == null) {
                 p.playSound(p.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
             }

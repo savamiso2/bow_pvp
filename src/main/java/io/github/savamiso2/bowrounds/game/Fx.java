@@ -1,7 +1,10 @@
 package io.github.savamiso2.bowrounds.game;
 
 import io.github.savamiso2.bowrounds.BowRounds;
+import io.github.savamiso2.bowrounds.card.Card;
 import io.github.savamiso2.bowrounds.card.PlayerStats;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.DeathProtection;
 import java.time.Duration;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -9,6 +12,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.EntityEffect;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -19,6 +23,8 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
@@ -86,6 +92,27 @@ final class Fx {
         if (shooter != null) {
             shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0.8f, 1.3f);
         }
+    }
+
+    // ---- カード獲得 ----
+
+    /**
+     * 不死のトーテムを使ったときの演出で、取ったカードを画面いっぱいに出す。
+     * クライアントは手に持っている「死を防ぐ」アイテムを表示するので、一瞬だけオフハンドにカードを持たせる。
+     */
+    static void cardReveal(BowRounds plugin, Player player, Card card) {
+        ItemStack item = ItemStack.of(card.rarity().icon());
+        CardArt.apply(item, card, player);
+        item.setData(DataComponentTypes.DEATH_PROTECTION, DeathProtection.deathProtection().build());
+        PlayerInventory inventory = player.getInventory();
+        ItemStack previous = inventory.getItemInOffHand();
+        inventory.setItemInOffHand(item);
+        player.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) {
+                inventory.setItemInOffHand(previous);
+            }
+        }, 1L);
     }
 
     // ---- 脱落・キル ----
