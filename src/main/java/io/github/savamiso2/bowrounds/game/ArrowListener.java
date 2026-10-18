@@ -12,6 +12,9 @@ import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
 import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
@@ -203,7 +206,7 @@ public final class ArrowListener implements Listener {
         }
 
         if (stats.explosionPower > 0) {
-            location.getWorld().createExplosion(location, stats.explosionPower, false, false, shooter.player());
+            explode(location, shooter, stats);
         }
 
         if (event.getHitBlock() != null && event.getHitBlockFace() != null) {
@@ -268,8 +271,8 @@ public final class ArrowListener implements Listener {
             return;
         }
         PlayerStats stats = shooter.stats();
-        double force = arrow.getPersistentDataContainer().getOrDefault(forceKey, PersistentDataType.DOUBLE, 1.0);
-        double damage = plugin.settings().baseDamage() * force * stats.damageMultiplier;
+        // チャージ量に関係なく一定（設定値 × カード倍率）
+        double damage = plugin.settings().baseDamage() * stats.damageMultiplier;
         event.setDamage(damage);
         target.lastDamager = shooter.id();
 
@@ -286,6 +289,44 @@ public final class ArrowListener implements Listener {
             victim.setArrowsInBody(0);
             if (stats.knockback > 0 && push.lengthSquared() > 1e-4) {
                 victim.setVelocity(push.normalize().multiply(0.7 * stats.knockback).setY(0.4));
+            }
+        });
+    }
+
+    /**
+     * 爆裂矢。ブロックは壊さず、範囲内の相手に距離に関係なく一定ダメージを与えて外へ吹き飛ばす。
+     * 直撃した矢のダメージと重なっても無敵時間で消えないよう、1tick後に与える。
+     */
+    private void explode(Location at, GamePlayer shooter, PlayerStats stats) {
+        World world = at.getWorld();
+        world.spawnParticle(Particle.EXPLOSION, at, 1);
+        world.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1f, 1.1f);
+        double radius = stats.explosionPower * 2.0;
+        double damage = plugin.settings().explosionDamage() * stats.damageMultiplier;
+        Player source = shooter.player();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (Player victim : world.getNearbyPlayers(at, radius)) {
+                if (victim.getUniqueId().equals(shooter.id())) {
+                    continue; // 自爆なし
+                }
+                Optional<GamePlayer> target = games.gamePlayer(victim);
+                if (target.isEmpty() || !target.get().alive || target.get().guarding()) {
+                    continue;
+                }
+                target.get().lastDamager = shooter.id();
+                victim.setNoDamageTicks(0);
+                DamageSource.Builder cause = DamageSource.builder(DamageType.EXPLOSION).withDamageLocation(at);
+                if (source != null) {
+                    cause.withCausingEntity(source);
+                }
+                victim.damage(damage, cause.build());
+                Vector away = victim.getLocation().toVector().subtract(at.toVector()).setY(0);
+                if (away.lengthSquared() < 1e-4) {
+                    away = new Vector(0, 0, 0);
+                } else {
+                    away.normalize().multiply(0.6);
+                }
+                victim.setVelocity(victim.getVelocity().add(away.setY(0.45)));
             }
         });
     }

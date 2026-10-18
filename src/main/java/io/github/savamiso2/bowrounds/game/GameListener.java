@@ -59,8 +59,9 @@ public final class GameListener implements Listener {
         }
         games.gamePlayer(victim).ifPresent(gp -> {
             Game game = games.game().orElseThrow();
-            if (game.state() != GameState.PLAYING || !gp.alive) {
-                event.setCancelled(true);
+            if (game.state() != GameState.PLAYING || !gp.alive
+                    || event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                event.setCancelled(true); // 落下ダメージなし（ダメージは矢と爆風の固定値だけ）
                 return;
             }
             if (event instanceof EntityDamageByEntityEvent byEntity && byEntity.getDamager() instanceof Player attacker

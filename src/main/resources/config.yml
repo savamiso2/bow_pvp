@@ -19,7 +19,9 @@ player:
   max-health: 10.0       # ハート5個
   magazine: 3            # 装填数
   reload-ticks: 40
-  base-damage: 4.0       # フルチャージ時の矢ダメージ
+  # ダメージはすべて固定値（チャージ量や爆風の距離では変わらない）。カードの倍率だけが掛かる
+  base-damage: 4.0       # 矢1本のダメージ
+  explosion-damage: 3.0  # 爆裂矢の爆風ダメージ（範囲内なら一律）
   arrow-speed: 1.0       # 矢の速度倍率
   guard-duration-ticks: 6   # 左クリックのガードが有効な時間（0.3秒）
   guard-cooldown-ticks: 80  # ガードのクールダウン（4秒）
