@@ -18,12 +18,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
 /**
- * 能力一覧のGUI。一覧ページでは全員の頭が並び（説明に持っているカード）、頭をクリックするとその人のカードが大きく並ぶ。
- * 大人数でも見られるよう、一覧は45人ずつページ分けする。
+ * 能力一覧のGUI。1人1行で、左端に頭、その右に持っているカードが並ぶ（ROUNDS風）。
+ * 1ページ5人。カードが8種類を超える人は、行の最後か頭をクリックすると全カードを見られる。
  */
 final class AbilityMenu implements InventoryHolder {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int ROWS = 5;
+    private static final int CARDS_PER_ROW = 8;
     private static final int PREV = 45;
     private static final int BACK = 49;
     private static final int NEXT = 53;
@@ -50,7 +51,7 @@ final class AbilityMenu implements InventoryHolder {
         List<GamePlayer> players = game.players().stream()
                 .sorted(Comparator.comparingInt(GamePlayer::points).reversed())
                 .toList();
-        int pages = Math.max(1, (players.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        int pages = Math.max(1, (players.size() + ROWS - 1) / ROWS);
         this.page = Math.clamp(page, 0, pages - 1);
         Component title = detail
                 ? Component.text(target.name() + " の能力", NamedTextColor.DARK_PURPLE)
@@ -61,7 +62,7 @@ final class AbilityMenu implements InventoryHolder {
         if (detail) {
             int slot = 0;
             for (Map.Entry<Card, Integer> entry : grouped(target.cards()).entrySet()) {
-                if (slot >= PAGE_SIZE) {
+                if (slot >= 45) {
                     break;
                 }
                 inventory.setItem(slot++, cardIcon(entry.getKey(), entry.getValue()));
@@ -72,12 +73,22 @@ final class AbilityMenu implements InventoryHolder {
             inventory.setItem(BACK, named(Material.ARROW, "一覧に戻る", NamedTextColor.YELLOW));
             return;
         }
-        List<GamePlayer> shown = players.subList(this.page * PAGE_SIZE,
-                Math.min(players.size(), (this.page + 1) * PAGE_SIZE));
-        for (int i = 0; i < shown.size(); i++) {
-            GamePlayer gp = shown.get(i);
+        List<GamePlayer> shown = players.subList(this.page * ROWS,
+                Math.min(players.size(), (this.page + 1) * ROWS));
+        for (int row = 0; row < shown.size(); row++) {
+            GamePlayer gp = shown.get(row);
             heads.add(gp.id());
-            inventory.setItem(i, head(gp));
+            inventory.setItem(row * 9, head(gp));
+            List<Map.Entry<Card, Integer>> cards = new ArrayList<>(grouped(gp.cards()).entrySet());
+            boolean overflow = cards.size() > CARDS_PER_ROW;
+            int visible = overflow ? CARDS_PER_ROW - 1 : cards.size();
+            for (int i = 0; i < visible; i++) {
+                inventory.setItem(row * 9 + 1 + i, cardIcon(cards.get(i).getKey(), cards.get(i).getValue()));
+            }
+            if (overflow) {
+                inventory.setItem(row * 9 + CARDS_PER_ROW,
+                        named(Material.PAPER, "ほか " + (cards.size() - visible) + " 種類（クリックで全部見る）", NamedTextColor.AQUA));
+            }
         }
         if (this.page > 0) {
             inventory.setItem(PREV, named(Material.ARROW, "前のページ", NamedTextColor.YELLOW));
@@ -98,8 +109,10 @@ final class AbilityMenu implements InventoryHolder {
         if (slot == NEXT) {
             return overview(game, page + 1);
         }
-        if (slot >= 0 && slot < heads.size()) {
-            return game.player(heads.get(slot)).map(gp -> detail(game, gp, page)).orElse(null);
+        int row = slot / 9;
+        int column = slot % 9;
+        if (row < heads.size() && (column == 0 || column == CARDS_PER_ROW)) {
+            return game.player(heads.get(row)).map(gp -> detail(game, gp, page)).orElse(null);
         }
         return null;
     }
@@ -112,14 +125,9 @@ final class AbilityMenu implements InventoryHolder {
                     .decoration(TextDecoration.BOLD, true));
             List<Component> lore = new ArrayList<>();
             lore.add(plain(gp.points() + " pt" + (gp.alive() ? "" : "（脱落中）"), NamedTextColor.YELLOW));
-            Map<Card, Integer> cards = grouped(gp.cards());
-            if (cards.isEmpty()) {
-                lore.add(plain("カードなし", NamedTextColor.DARK_GRAY));
-            }
-            cards.forEach((card, count) -> lore.add(
-                    plain(card.displayName() + (count > 1 ? " x" + count : ""), card.rarity().color())));
+            lore.add(plain("カード " + gp.cards().size() + " 枚", NamedTextColor.GRAY));
             lore.add(Component.empty());
-            lore.add(plain("クリックで詳しく見る", NamedTextColor.AQUA));
+            lore.add(plain("クリックで全カードを大きく見る", NamedTextColor.AQUA));
             meta.lore(lore);
         });
         return item;
