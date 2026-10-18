@@ -285,7 +285,7 @@ public final class Game {
                 continue;
             }
             boolean bottom = i >= bottomFrom;
-            gp.offer = Card.draw(settings.offerSize() + (bottom ? 1 : 0), bottom);
+            gp.offer = Card.draw(settings.offerSize(), bottom); // 枚数は全員同じ、下位はレア度アップ
             if (settings.cardStage()) {
                 CardStage stage = new CardStage(plugin, gp);
                 stages.put(gp.id(), stage);

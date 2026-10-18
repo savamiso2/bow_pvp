@@ -32,8 +32,8 @@ cards:
   # stage = 目の前に3Dのカードが浮かび、見て・クリックで選ぶ / menu = チェスト型の画面で選ぶ
   style: stage
   # 何枚から選ぶか。下位プレイヤーは +1 枚
-  offer-size: 3
-  bottom-bonus-ratio: 0.25 # 下位この割合は選択肢+1、レア度アップ
+  offer-size: 5
+  bottom-bonus-ratio: 0.25 # 下位この割合はレアカードが出やすい
   # 重ね取りの上限（大人数での負荷対策）
   max-extra-arrows: 6
   max-bounces: 3
