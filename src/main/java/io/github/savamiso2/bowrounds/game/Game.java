@@ -85,7 +85,7 @@ public final class Game {
         }
         this.scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
         this.sidebar = scoreboard.registerNewObjective("bowrounds", Criteria.DUMMY,
-                Component.text("BowRounds", NamedTextColor.GOLD));
+                Fx.sidebarTitle());
         sidebar.setDisplaySlot(DisplaySlot.SIDEBAR);
     }
 
@@ -167,14 +167,22 @@ public final class Game {
         if (phaseSeconds <= 0) {
             state = GameState.PLAYING;
             phaseSeconds = 0;
-            showTitle(Component.text("FIGHT!", NamedTextColor.RED), Component.empty());
+            showTitle(Fx.fightTitle(), Component.empty());
             playSound(Sound.ENTITY_ENDER_DRAGON_GROWL);
+            playSound(Sound.ITEM_TRIDENT_THUNDER);
+            alivePlayers().forEach(gp -> Fx.fightBurst(gp.player()));
             startTimer(this::tickPlaying);
             return;
         }
-        showTitle(Component.text(phaseSeconds, NamedTextColor.GOLD),
-                Component.text("ラウンド " + round, NamedTextColor.YELLOW));
-        playSound(Sound.BLOCK_NOTE_BLOCK_HAT);
+        showTitle(Fx.countdownNumber(phaseSeconds),
+                Fx.mm("<gray>ROUND <white><bold>" + round + "</bold> <dark_gray>/ " + settings.rounds() + "  <gray>" + arena.name()));
+        float pitch = Fx.countdownPitch(phaseSeconds);
+        for (GamePlayer gp : players.values()) {
+            Player p = gp.player();
+            if (p != null) {
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, pitch);
+            }
+        }
         phaseSeconds--;
     }
 
@@ -205,20 +213,17 @@ public final class Game {
         Player p = victim.player();
         if (p != null) {
             p.setGlowing(false);
-            p.setGameMode(GameMode.SPECTATOR);
-            p.showTitle(Title.title(Component.text("脱落", NamedTextColor.RED), Component.text("観戦モード")));
         }
-        if (killer != null && killer != victim) {
+        boolean byKiller = killer != null && killer != victim;
+        if (p != null) {
+            Fx.elimination(p, byKiller ? killer.player() : null, victim.name(), byKiller ? killer.name() : null);
+            p.setGameMode(GameMode.SPECTATOR);
+        }
+        if (byKiller) {
             killer.kills++;
             addPoints(killer, settings.killPoints());
-            broadcast(Component.text(killer.name() + " が " + victim.name() + " を倒した", NamedTextColor.GRAY));
-            Player kp = killer.player();
-            if (kp != null) {
-                kp.playSound(kp.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
-            }
-        } else {
-            broadcast(Component.text(victim.name() + " が脱落した", NamedTextColor.GRAY));
         }
+        broadcast(Fx.killFeed(byKiller ? killer.name() : null, victim.name()));
         if (alivePlayers().size() <= 1) {
             endRound();
         }
@@ -238,9 +243,12 @@ public final class Game {
         }
 
         GamePlayer winner = ranking.isEmpty() ? null : ranking.getFirst();
-        Component name = Component.text(winner == null ? "なし" : winner.name(), NamedTextColor.GOLD);
-        showTitle(name.append(Component.text(" の勝ち！", NamedTextColor.YELLOW)), Component.text("ラウンド " + round, NamedTextColor.GRAY));
+        showTitle(Fx.roundWinTitle(winner == null ? "なし" : winner.name()),
+                Fx.mm("<gray>ROUND " + round + " <dark_gray>/ " + settings.rounds()));
         playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE);
+        if (winner != null && winner.player() != null && winner.alive) {
+            Fx.sparkle(winner.player().getLocation().add(0, 1.2, 0));
+        }
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (state == GameState.ROUND_END) {
@@ -415,7 +423,22 @@ public final class Game {
                         i == 0 ? NamedTextColor.YELLOW : NamedTextColor.WHITE));
             }
             if (!ranking.isEmpty()) {
-                showTitle(Component.text(ranking.getFirst().name() + " の優勝！", NamedTextColor.GOLD), Component.empty());
+                showTitle(Fx.championTitle(ranking.getFirst().name()), Fx.mm("<yellow>の優勝！"));
+                playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE);
+                Player champion = ranking.getFirst().player();
+                if (champion != null) {
+                    // ロビーに戻ってから、優勝者のまわりに花火を上げる
+                    for (int i = 0; i < 4; i++) {
+                        int n = i;
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (champion.isOnline()) {
+                                double a = Math.PI / 2 * n;
+                                Fx.firework(champion.getLocation().add(Math.cos(a) * 2, 0, Math.sin(a) * 2),
+                                        Fx.playerColor(champion.getUniqueId()), n % 2 == 0);
+                            }
+                        }, 10L + 8L * i);
+                    }
+                }
             }
         }
         for (GamePlayer gp : players.values()) {
