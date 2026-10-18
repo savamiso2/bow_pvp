@@ -64,14 +64,14 @@ final class Fx {
     // ---- 命中 ----
 
     /** 当たった相手の上にダメージの数字を浮かべ、撃った人に命中音を鳴らす。 */
-    static void hit(BowRounds plugin, Player victim, Player shooter, double damage) {
+    static void hit(BowRounds plugin, Player victim, Player shooter) {
         Location at = victim.getEyeLocation().add(randomOffset(0.4), 0.3, randomOffset(0.4));
         TextDisplay text = at.getWorld().spawn(at, TextDisplay.class, d -> {
             d.setPersistent(false);
             d.setBillboard(Display.Billboard.CENTER);
             d.setShadowed(true);
             d.setBackgroundColor(Color.fromARGB(0, 0, 0, 0));
-            d.text(mm("<bold><gradient:#ff5555:#ffaa00>-" + format(damage) + "</gradient></bold>"));
+            d.text(mm("<bold><italic><gradient:#ff5555:#ffaa00>HIT!</gradient></italic></bold>"));
             d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
                     new Vector3f(1.2f, 1.2f, 1.2f), new AxisAngle4f()));
             d.setTeleportDuration(12);
@@ -187,9 +187,5 @@ final class Fx {
 
     private static double randomOffset(double range) {
         return (Math.random() * 2 - 1) * range;
-    }
-
-    private static String format(double value) {
-        return value == Math.rint(value) ? String.valueOf((long) value) : String.format("%.1f", value);
     }
 }
