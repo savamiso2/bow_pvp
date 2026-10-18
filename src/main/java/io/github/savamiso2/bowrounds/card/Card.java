@@ -25,8 +25,8 @@ public enum Card {
         s.magazine += 3;
         s.reloadMultiplier *= 1.3;
     }),
-    TOUGH("Tank", Rarity.COMMON, "最大体力 +2ハート", "移動速度 -10%", s -> {
-        s.maxHealth += 4;
+    TOUGH("Tank", Rarity.COMMON, "最大体力 +20", "移動速度 -10%", s -> {
+        s.maxHealth += 20;
         s.moveSpeedBonus -= 0.1;
     }),
     POISON("Toxic", Rarity.COMMON, "命中した相手に毒2秒", null, s -> s.poisonTicks += 40),
@@ -38,9 +38,9 @@ public enum Card {
         s.homing += 0.08;
         s.reloadMultiplier *= 1.2;
     }),
-    VAMPIRE("Leech", Rarity.RARE, "与ダメージの30%を回復", "最大体力 -1ハート", s -> {
+    VAMPIRE("Leech", Rarity.RARE, "与ダメージの30%を回復", "最大体力 -10", s -> {
         s.lifesteal += 0.3;
-        s.maxHealth -= 2;
+        s.maxHealth -= 10;
     }),
     JET("Jetpack", Rarity.RARE, "空中ジャンプ +1", null, s -> s.airJumps += 1),
     POWER("Power Shot", Rarity.RARE, "ダメージ +40%、矢の速度 +30%", "装填数 -1", s -> {

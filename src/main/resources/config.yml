@@ -16,12 +16,12 @@ points:
   placement: [5, 3, 2, 1, 1]
 
 player:
-  max-health: 10.0       # ハート5個
+  max-health: 50.0       # 内部の体力。画面のハートは常に10個に縮めて表示する
   magazine: 3            # 装填数
   reload-ticks: 40
   # ダメージはすべて固定値（チャージ量や爆風の距離では変わらない）。カードの倍率だけが掛かる
-  base-damage: 4.0       # 矢1本のダメージ
-  explosion-damage: 3.0  # 爆裂矢の爆風ダメージ（範囲内なら一律）
+  base-damage: 20.0      # 矢1本のダメージ（体力50なら3発で倒せる）
+  explosion-damage: 15.0 # 爆裂矢の爆風ダメージ（範囲内なら一律）
   arrow-speed: 1.0       # 矢の速度倍率
   # 矢の当たり判定の余裕（ブロック）。昔のマイクラと同じく撃った直後から一定。0.3 = 昔のバニラ、0 = 余裕なし
   arrow-hit-margin: 0.3

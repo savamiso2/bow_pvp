@@ -511,6 +511,9 @@ public final class Game {
             health.setBaseValue(stats.maxHealth);
         }
         p.setHealth(stats.maxHealth);
+        // 体力は内部では大きな数字。画面のハートは最大体力に関係なく10個で表示する
+        p.setHealthScale(20.0);
+        p.setHealthScaled(true);
         AttributeInstance speed = p.getAttribute(Attribute.MOVEMENT_SPEED);
         if (speed != null) {
             speed.removeModifier(speedKey);
@@ -614,6 +617,7 @@ public final class Game {
         if (speed != null) {
             speed.removeModifier(speedKey);
         }
+        p.setHealthScaled(false);
         p.hideBossBar(bossBar);
         TabList.reset(p);
         manager.sendToLobby(p);
@@ -628,7 +632,7 @@ public final class Game {
         border.setCenter(arena.center());
         border.setSize(arena.borderSize());
         border.setDamageBuffer(0);
-        border.setDamageAmount(1.0);
+        border.setDamageAmount(5.0);
     }
 
     private void restoreBorder() {
@@ -759,6 +763,7 @@ public final class Game {
     }
 
     static void poison(Player victim, int ticks) {
-        victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, ticks, 0));
+        // 体力が大きいので毒も強め（レベル3：約0.3秒ごとに1ダメージ）
+        victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, ticks, 2));
     }
 }
