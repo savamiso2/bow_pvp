@@ -17,11 +17,14 @@ import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.util.Vector;
 
 /** 試合中プレイヤーの被ダメージ・脱落・移動・インベントリまわり。 */
@@ -97,11 +100,12 @@ public final class GameListener implements Listener {
             Game game = games.game().orElseThrow();
             Location from = event.getFrom();
             Location to = event.getTo();
-            if (game.state() == GameState.COUNTDOWN && from.distanceSquared(to) > 0.0001) {
-                Location frozen = from.clone();
-                frozen.setYaw(to.getYaw());
-                frozen.setPitch(to.getPitch());
-                event.setTo(frozen);
+            boolean frozen = game.state() == GameState.COUNTDOWN || game.choosingOnStage(gp);
+            if (frozen && from.distanceSquared(to) > 0.0001) {
+                Location locked = from.clone();
+                locked.setYaw(to.getYaw());
+                locked.setPitch(to.getPitch());
+                event.setTo(locked);
                 return;
             }
             if (game.state() != GameState.PLAYING || !gp.alive) {
@@ -139,6 +143,24 @@ public final class GameListener implements Listener {
             player.setVelocity(boost);
             if (gp.airJumpsLeft <= 0) {
                 player.setAllowFlight(false);
+            }
+        });
+    }
+
+    /** 3Dカード選択中のクリック（左右どちらでも）で決定。 */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onStageClick(PlayerInteractEvent event) {
+        if (event.getAction() == Action.PHYSICAL) {
+            return;
+        }
+        Player player = event.getPlayer();
+        games.gamePlayer(player).ifPresent(gp -> {
+            Game game = games.game().orElseThrow();
+            if (game.choosingOnStage(gp)) {
+                event.setCancelled(true);
+                if (event.getHand() != EquipmentSlot.OFF_HAND) {
+                    game.stageClick(gp);
+                }
             }
         });
     }
