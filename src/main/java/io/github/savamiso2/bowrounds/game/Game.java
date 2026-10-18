@@ -349,12 +349,30 @@ public final class Game {
     }
 
     private void tickCardPick() {
+        if (settings.cardPickSeconds() <= 0) {
+            // 制限時間なし：全員が選ぶまで待つ。ボスバーは残り人数
+            long total = players.values().stream().filter(g -> !g.offer.isEmpty() && g.player() != null).count();
+            long waiting = players.values().stream().filter(g -> !g.picked && g.player() != null).count();
+            bossBar.name(Component.text("カード選択中… あと" + waiting + "人", NamedTextColor.LIGHT_PURPLE));
+            bossBar.progress(total == 0 ? 1f : (float) (total - waiting) / total);
+            return;
+        }
         bossBar.progress((float) Math.max(0, (double) phaseSeconds / settings.cardPickSeconds()));
         if (phaseSeconds <= 0) {
             finishCardPick();
             return;
         }
         phaseSeconds--;
+    }
+
+    /** 管理者用：選んでいない人の分は自動で決めて、カード選択を終える。 */
+    public boolean skipCardPick() {
+        if (state != GameState.CARD_PICK || finishing) {
+            return false;
+        }
+        cancelTimer();
+        finishCardPick();
+        return true;
     }
 
     private void finishCardPick() {

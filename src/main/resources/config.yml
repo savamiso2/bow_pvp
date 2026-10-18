@@ -8,7 +8,7 @@ match:
   border-shrink-after-seconds: 45
   border-shrink-duration-seconds: 40
   border-min-size: 8
-  card-pick-seconds: 15
+  card-pick-seconds: 0 # 0 = 制限時間なし（全員が選ぶまで待つ）
 
 points:
   kill: 1

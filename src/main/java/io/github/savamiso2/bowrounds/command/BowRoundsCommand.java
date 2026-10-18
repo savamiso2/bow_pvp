@@ -9,6 +9,7 @@ import com.mojang.brigadier.context.CommandContext;
 import io.github.savamiso2.bowrounds.BowRounds;
 import io.github.savamiso2.bowrounds.arena.Arena;
 import io.github.savamiso2.bowrounds.arena.MapBuilder;
+import io.github.savamiso2.bowrounds.game.Game;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.List;
@@ -61,6 +62,13 @@ public final class BowRoundsCommand {
                 .then(Commands.literal("stop").requires(this::admin).executes(ctx -> {
                     plugin.games().stop();
                     ctx.getSource().getSender().sendMessage(Component.text("試合を停止しました", NamedTextColor.YELLOW));
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("skip").requires(this::admin).executes(ctx -> {
+                    boolean skipped = plugin.games().game().map(Game::skipCardPick).orElse(false);
+                    ctx.getSource().getSender().sendMessage(skipped
+                            ? Component.text("カード選択を締め切りました（未選択の人は自動で決定）", NamedTextColor.YELLOW)
+                            : Component.text("今はカード選択中ではありません", NamedTextColor.RED));
                     return Command.SINGLE_SUCCESS;
                 }))
                 .then(Commands.literal("setlobby").requires(this::admin)

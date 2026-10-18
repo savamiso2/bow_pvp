@@ -36,7 +36,7 @@ public record Settings(
                 c.getInt("match.border-shrink-after-seconds", 45),
                 c.getInt("match.border-shrink-duration-seconds", 40),
                 c.getDouble("match.border-min-size", 8),
-                c.getInt("match.card-pick-seconds", 15),
+                c.getInt("match.card-pick-seconds", 0),
                 c.getInt("points.kill", 1),
                 c.getIntegerList("points.placement"),
                 c.getDouble("player.max-health", 10.0),
