@@ -3,6 +3,7 @@ package io.github.savamiso2.bowrounds.game;
 import io.github.savamiso2.bowrounds.BowRounds;
 import io.github.savamiso2.bowrounds.Settings;
 import io.github.savamiso2.bowrounds.arena.Arena;
+import io.github.savamiso2.bowrounds.arena.MapBuilder;
 import io.github.savamiso2.bowrounds.card.Card;
 import io.github.savamiso2.bowrounds.card.PlayerStats;
 import java.time.Duration;
@@ -132,6 +133,9 @@ public final class Game {
         restoreBorder();
         arena = next;
         eliminated.clear();
+        if (arena.center().getWorld().getName().equals(MapBuilder.WORLD_NAME)) {
+            arena.center().getWorld().setTime(6000); // 専用ワールドは常に昼
+        }
         setupBorder();
 
         List<Location> spawns = new ArrayList<>(arena.spawns());
