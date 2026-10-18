@@ -56,6 +56,7 @@ public final class Game {
     private final Settings settings;
     private final GameManager manager;
     private final NamespacedKey speedKey;
+    static final int ABILITY_BOOK_SLOT = 4;
     private final Map<UUID, GamePlayer> players = new LinkedHashMap<>();
     private final List<GamePlayer> eliminated = new ArrayList<>();
     private final Map<UUID, CardStage> stages = new LinkedHashMap<>();
@@ -498,7 +499,15 @@ public final class Game {
             meta.displayName(Component.text("弓", NamedTextColor.GOLD));
         });
         p.getInventory().setItem(0, bow);
+        ItemStack book = ItemStack.of(Material.BOOK);
+        book.editMeta(meta -> meta.displayName(Component.text("みんなの能力（右クリック / Fキー）", NamedTextColor.AQUA)));
+        p.getInventory().setItem(ABILITY_BOOK_SLOT, book);
         giveArrows(gp);
+    }
+
+    /** 能力一覧のGUIを開く。 */
+    public void openAbilities(Player p) {
+        p.openInventory(AbilityMenu.overview(this, 0).getInventory());
     }
 
     void giveArrows(GamePlayer gp) {

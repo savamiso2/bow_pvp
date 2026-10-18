@@ -51,8 +51,14 @@ public final class BowRoundsCommand {
                 .then(Commands.literal("status").executes(this::status))
                 .then(Commands.literal("cards").executes(ctx -> {
                     CommandSender sender = ctx.getSource().getSender();
-                    plugin.games().game().ifPresentOrElse(
-                            g -> CardList.lines(g).forEach(sender::sendMessage),
+                    plugin.games().game().ifPresentOrElse(g -> {
+                                // 試合に出ている人はGUIで、それ以外（コンソールなど）はチャットで
+                                if (sender instanceof Player p && plugin.games().gamePlayer(p).isPresent()) {
+                                    g.openAbilities(p);
+                                } else {
+                                    CardList.lines(g).forEach(sender::sendMessage);
+                                }
+                            },
                             () -> sender.sendMessage(Component.text("試合は行われていません", NamedTextColor.GRAY)));
                     return Command.SINGLE_SUCCESS;
                 }))

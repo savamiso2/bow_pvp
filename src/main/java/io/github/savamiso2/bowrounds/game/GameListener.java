@@ -5,6 +5,7 @@ import io.github.savamiso2.bowrounds.card.Card;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -190,6 +191,16 @@ public final class GameListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
+        if (event.getInventory().getHolder() instanceof AbilityMenu menu) {
+            event.setCancelled(true);
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+                AbilityMenu next = menu.click(event.getSlot());
+                if (next != null) {
+                    player.openInventory(next.getInventory());
+                }
+            }
+            return;
+        }
         if (event.getInventory().getHolder() instanceof CardMenu menu) {
             event.setCancelled(true);
             if (event.getClickedInventory() != event.getView().getTopInventory()) {
@@ -209,7 +220,9 @@ public final class GameListener implements Listener {
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
         if (event.getWhoClicked() instanceof Player p
-                && (event.getInventory().getHolder() instanceof CardMenu || games.gamePlayer(p).isPresent())) {
+                && (event.getInventory().getHolder() instanceof CardMenu
+                        || event.getInventory().getHolder() instanceof AbilityMenu
+                        || games.gamePlayer(p).isPresent())) {
             event.setCancelled(true);
         }
     }
@@ -235,11 +248,34 @@ public final class GameListener implements Listener {
         }
     }
 
+    /** Fキー（持ち替え）で能力一覧を開く。 */
     @EventHandler(ignoreCancelled = true)
     public void onSwap(PlayerSwapHandItemsEvent event) {
-        if (games.gamePlayer(event.getPlayer()).isPresent()) {
+        Player player = event.getPlayer();
+        games.gamePlayer(player).ifPresent(gp -> {
             event.setCancelled(true);
+            Game game = games.game().orElseThrow();
+            if (!game.choosingOnStage(gp)) {
+                game.openAbilities(player);
+            }
+        });
+    }
+
+    /** 本を右クリックで能力一覧を開く。 */
+    @EventHandler
+    public void onBook(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || event.getItem() == null || event.getItem().getType() != Material.BOOK
+                || (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK)) {
+            return;
         }
+        Player player = event.getPlayer();
+        games.gamePlayer(player).ifPresent(gp -> {
+            Game game = games.game().orElseThrow();
+            if (!game.choosingOnStage(gp)) {
+                event.setCancelled(true);
+                game.openAbilities(player);
+            }
+        });
     }
 
     @EventHandler(ignoreCancelled = true)

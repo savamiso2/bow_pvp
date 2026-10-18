@@ -32,7 +32,7 @@ public final class CardList {
         return Component.text("[みんなの能力を見る]", NamedTextColor.AQUA)
                 .decorate(TextDecoration.UNDERLINED)
                 .clickEvent(ClickEvent.runCommand("/br cards"))
-                .hoverEvent(HoverEvent.showText(Component.text("/br cards")));
+                .hoverEvent(HoverEvent.showText(Component.text("Fキー・本の右クリックでも開けます")));
     }
 
     private static Component line(GamePlayer gp) {
