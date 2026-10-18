@@ -19,7 +19,22 @@ gradle build
 `build/libs/` に jar ができます。GitHub Actions でも PR ごとにビルドし、jar を成果物として置きます。
 `gradle.properties` の `paperVersion` / `apiVersion` は、実際に公開されている paper-api のバージョンに合わせてください。
 
-## 遊び方（MVP）
+## 遊び方
+
+### いちばん簡単な始め方
+
+1. OP権限で `/br arena setup` … 専用ワールド `bowrounds_arenas` に既製マップ3種とロビーができます
+2. 参加者が `/br join`、OPが `/br start`
+
+| マップ | 人数 | 内容 |
+|---|---|---|
+| pillars | 2〜8人 | 小さな石の床と柱。外は奈落 |
+| islands | 6〜24人 | 浮島7つを細い橋でつないだマップ |
+| colosseum | 16〜200人 | 壁に囲まれた広い砂岩の闘技場 |
+
+人数に合うマップがラウンドごとに選ばれます。
+
+### 自分でアリーナを作る場合
 
 アリーナは専用ワールドに作るのがおすすめです（ラウンド中はそのワールドのワールドボーダーを使います）。
 
@@ -34,6 +49,7 @@ gradle build
 | `/br join` / `/br leave` | 参加・離脱 |
 | `/br status` | 参加人数と試合状況 |
 | `/br start` / `/br stop` | 試合開始・停止（OP） |
+| `/br arena setup` | 既製マップ3種とロビーを建てる（OP） |
 | `/br arena list` / `delete <名前>` | アリーナ一覧・削除（OP） |
 
 数値（体力・装填数・ポイント配分など）は `config.yml` で変更できます。

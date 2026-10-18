@@ -1,5 +1,6 @@
 package io.github.savamiso2.bowrounds.game;
 
+import io.github.savamiso2.bowrounds.arena.MapBuilder;
 import io.github.savamiso2.bowrounds.card.Card;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -9,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -163,6 +165,15 @@ public final class GameListener implements Listener {
                 }
             }
         });
+    }
+
+    /** アリーナ専用ワールドでは敵モブを自然湧きさせない。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onSpawn(CreatureSpawnEvent event) {
+        if (event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL
+                && event.getLocation().getWorld().getName().equals(MapBuilder.WORLD_NAME)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

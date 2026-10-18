@@ -87,6 +87,12 @@ public final class ArenaManager {
         return arena;
     }
 
+    /** 同名があれば置き換えて登録する。 */
+    public void put(Arena arena) {
+        arenas.put(arena.name(), arena);
+        save();
+    }
+
     public boolean remove(String name) {
         boolean removed = arenas.remove(name) != null;
         if (removed) {

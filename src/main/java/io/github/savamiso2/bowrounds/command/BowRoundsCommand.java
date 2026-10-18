@@ -8,6 +8,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.savamiso2.bowrounds.BowRounds;
 import io.github.savamiso2.bowrounds.arena.Arena;
+import io.github.savamiso2.bowrounds.arena.MapBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.bukkit.entity.Player;
  * <pre>
  * join | leave | status
  * start | stop | setlobby                         （管理者）
+ * arena setup                                    （専用ワールドに既製マップ3種とロビーを建てる）
  * arena create &lt;名前&gt; &lt;最大人数&gt;              （今いる場所が中心）
  * arena addspawn &lt;名前&gt;                         （今いる場所をスポーンに追加）
  * arena border &lt;名前&gt; &lt;サイズ&gt;
@@ -82,6 +84,13 @@ public final class BowRoundsCommand {
                         sender.sendMessage(Component.text(a.name() + "  " + a.minPlayers() + "〜" + a.maxPlayers()
                                 + "人  スポーン" + a.spawns().size() + "  ボーダー" + (int) a.borderSize(), NamedTextColor.WHITE));
                     }
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("setup").executes(ctx -> {
+                    List<String> built = new MapBuilder(plugin).buildAll();
+                    ctx.getSource().getSender().sendMessage(Component.text(
+                            "マップを作成しました: " + String.join(", ", built) + "（ワールド " + MapBuilder.WORLD_NAME + "）",
+                            NamedTextColor.GREEN));
                     return Command.SINGLE_SUCCESS;
                 }))
                 .then(Commands.literal("create")
