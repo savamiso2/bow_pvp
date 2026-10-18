@@ -21,12 +21,25 @@ public final class PlayerStats {
     public int poisonTicks;
     public double lifesteal;
     public int airJumps;
+    public int pierce;
+    public boolean split;
+    public double knockback;
+
+    // ガード（左クリック）
+    public int guardDurationTicks;
+    public double guardCooldownMultiplier = 1.0;
+    public int guardCooldownBonusTicks;
+    public boolean guardReflect;
+    public double guardShockwaveRadius;
+    public double guardBlinkDistance;
+    public double guardDashPower;
 
     public static PlayerStats compute(Settings settings, List<Card> cards) {
         PlayerStats stats = new PlayerStats();
         stats.maxHealth = settings.maxHealth();
         stats.magazine = settings.magazine();
         stats.arrowSpeedMultiplier = settings.arrowSpeed();
+        stats.guardDurationTicks = settings.guardDurationTicks();
         for (Card card : cards) {
             card.apply(stats);
         }
@@ -40,5 +53,9 @@ public final class PlayerStats {
 
     public int reloadTicks(Settings settings) {
         return Math.max(5, (int) Math.round(settings.reloadTicks() * reloadMultiplier));
+    }
+
+    public int guardCooldownTicks(Settings settings) {
+        return Math.max(10, (int) Math.round(settings.guardCooldownTicks() * guardCooldownMultiplier) + guardCooldownBonusTicks);
     }
 }

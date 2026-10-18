@@ -385,6 +385,8 @@ public final class Game {
         gp.lastDamager = null;
         gp.reloading = false;
         gp.airJumpsLeft = stats.airJumps;
+        gp.guardUntilTick = 0;
+        gp.guardReadyTick = 0;
 
         p.closeInventory();
         p.setGameMode(GameMode.ADVENTURE);
@@ -395,6 +397,8 @@ public final class Game {
         p.setFoodLevel(20);
         p.setSaturation(20f);
         p.setArrowsInBody(0);
+        p.setLevel(0);
+        p.setExp(1f);
         p.setAllowFlight(stats.airJumps > 0);
         p.setFlying(false);
 
@@ -485,6 +489,7 @@ public final class Game {
         p.setGlowing(false);
         p.setAllowFlight(false);
         p.setFlying(false);
+        p.setExp(0f);
         p.setGameMode(GameMode.SURVIVAL);
         AttributeInstance health = p.getAttribute(Attribute.MAX_HEALTH);
         if (health != null) {

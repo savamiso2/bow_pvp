@@ -23,6 +23,8 @@ public final class GamePlayer {
     int airJumpsLeft;
     boolean reloading;
     UUID lastDamager;
+    int guardUntilTick;
+    int guardReadyTick;
     List<Card> offer = List.of();
     boolean picked;
 
@@ -50,6 +52,11 @@ public final class GamePlayer {
 
     public PlayerStats stats() {
         return stats;
+    }
+
+    /** 今この瞬間ガード中か。 */
+    public boolean guarding() {
+        return alive && Bukkit.getCurrentTick() <= guardUntilTick;
     }
 
     public boolean alive() {
