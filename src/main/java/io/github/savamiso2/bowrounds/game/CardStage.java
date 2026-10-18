@@ -242,9 +242,8 @@ final class CardStage {
     private static Color background(Rarity rarity, boolean bright) {
         int alpha = bright ? 220 : 150;
         return switch (rarity) {
-            case COMMON -> Color.fromARGB(alpha, 40, 40, 40);
-            case RARE -> Color.fromARGB(alpha, 20, 60, 110);
-            case EPIC -> Color.fromARGB(alpha, 90, 20, 110);
+            // 配信画面のパネルと同じ黒。レア度は文字の色で見分ける
+            case COMMON, RARE, EPIC -> Color.fromARGB(alpha, 13, 13, 16);
         };
     }
 

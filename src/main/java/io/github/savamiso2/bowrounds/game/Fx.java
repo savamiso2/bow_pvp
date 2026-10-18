@@ -35,6 +35,14 @@ final class Fx {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
+    // テーマ「電脳アリーナ配信」の色。黒・白と、カードのレア度と同じ3色だけを使う
+    static final String MINT = "<#2fe0a8>";
+    static final String BLUE = "<#3d8bff>";
+    static final String PINK = "<#ff2e7e>";
+    static final Color MINT_RGB = Color.fromRGB(0x2fe0a8);
+    static final Color BLUE_RGB = Color.fromRGB(0x3d8bff);
+    static final Color PINK_RGB = Color.fromRGB(0xff2e7e);
+
     private Fx() {
     }
 
@@ -77,7 +85,7 @@ final class Fx {
             d.setBillboard(Display.Billboard.CENTER);
             d.setShadowed(true);
             d.setBackgroundColor(Color.fromARGB(0, 0, 0, 0));
-            d.text(mm("<bold><gradient:#ff5555:#ffaa00>-" + format(damage) + "</gradient></bold>"));
+            d.text(mm("<bold>" + PINK + "-" + format(damage) + "</bold>"));
             d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
                     new Vector3f(1.2f, 1.2f, 1.2f), new AxisAngle4f()));
             d.setTeleportDuration(12);
@@ -124,13 +132,13 @@ final class Fx {
         world.spawnParticle(Particle.TOTEM_OF_UNDYING, at, 40, 0.3, 0.5, 0.3, 0.4);
         world.playSound(at, Sound.ENTITY_PLAYER_HURT_SWEET_BERRY_BUSH, 1f, 0.6f);
         world.playSound(at, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 0.8f, 1f);
-        victim.showTitle(Title.title(mm("<bold><gradient:#ff3333:#990000>ELIMINATED</gradient></bold>"),
-                mm(killerName == null ? "<gray>観戦モード" : "<gray>" + killerName + " <white>に倒された"),
+        victim.showTitle(Title.title(mm("<bold>" + PINK + "× <white>LOST SIGNAL</bold>"),
+                mm(killerName == null ? "<gray>観戦モードに切り替え" : "<gray>" + killerName + " <white>に倒された"),
                 times(150, 1500, 400)));
         victim.playSound(victim.getLocation(), Sound.ENTITY_WITHER_HURT, 0.6f, 0.7f);
         if (killer != null) {
             killer.showTitle(Title.title(Component.empty(),
-                    mm("<bold><gradient:#ffdd55:#ff7700>⚔ KILL</gradient></bold> <white>" + victimName),
+                    mm("<bold>" + PINK + "KILL</bold> <white>" + victimName),
                     times(0, 900, 250)));
             killer.playSound(killer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
             killer.playSound(killer.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1.6f);
@@ -139,20 +147,20 @@ final class Fx {
 
     static Component killFeed(String killer, String victim) {
         return killer == null
-                ? mm("<dark_gray>☠ <gray>" + victim + " <dark_gray>が脱落")
-                : mm("<gold>" + killer + " <yellow>➶ <gray>" + victim);
+                ? mm("<dark_gray>× <gray>" + victim + " <dark_gray>LOST SIGNAL")
+                : mm("<white>" + killer + " " + PINK + "➶ <gray>" + victim);
     }
 
     // ---- ラウンド ----
 
     static Component countdownNumber(int seconds) {
         String color = switch (seconds) {
-            case 3 -> "#ff5555";
-            case 2 -> "#ffaa00";
-            case 1 -> "#ffff55";
-            default -> "#ffffff";
+            case 3 -> PINK;
+            case 2 -> BLUE;
+            case 1 -> MINT;
+            default -> "<white>";
         };
-        return mm("<bold><color:" + color + ">" + seconds + "</color></bold>");
+        return mm("<bold>" + color + seconds + "</bold>");
     }
 
     static float countdownPitch(int seconds) {
@@ -164,7 +172,7 @@ final class Fx {
     }
 
     static Component fightTitle() {
-        return mm("<bold><gradient:#ff3355:#ffcc00:#ff3355>FIGHT!</gradient></bold>");
+        return mm("<bold>" + PINK + "● <white>ON AIR</bold>");
     }
 
     /** 開戦時、各プレイヤーの足元にリングを出す。 */
@@ -173,17 +181,18 @@ final class Fx {
         for (int i = 0; i < 24; i++) {
             double a = Math.PI * 2 * i / 24;
             Vector v = new Vector(Math.cos(a), 0, Math.sin(a));
-            at.getWorld().spawnParticle(Particle.FLAME, at.clone().add(v.clone().multiply(0.8)), 0,
-                    v.getX(), 0.05, v.getZ(), 0.15);
+            Color color = i % 3 == 0 ? PINK_RGB : i % 3 == 1 ? BLUE_RGB : MINT_RGB;
+            at.getWorld().spawnParticle(Particle.DUST, at.clone().add(v.clone().multiply(0.8)), 1, 0, 0, 0, 0,
+                    new Particle.DustOptions(color, 1.4f));
         }
     }
 
     static Component roundWinTitle(String winner) {
-        return mm("<bold><gradient:#ffe066:#ff9a00>" + winner + "</gradient></bold> <yellow>の勝ち！");
+        return mm("<bold><white>" + winner + "</bold> " + MINT + "WIN");
     }
 
     static Component championTitle(String winner) {
-        return mm("<bold><gradient:#fff2a8:#ffcc00:#ff8800>👑 " + winner + " 👑</gradient></bold>");
+        return mm("<bold>" + PINK + "CHAMPION <white>" + winner + "</bold>");
     }
 
     /** 花火を打ち上げる（演出用。ダメージは試合外なのでロビー側で無効になる）。 */
@@ -193,7 +202,7 @@ final class Fx {
             meta.addEffect(FireworkEffect.builder()
                     .with(big ? FireworkEffect.Type.BALL_LARGE : FireworkEffect.Type.BURST)
                     .withColor(main, Color.WHITE)
-                    .withFade(Color.fromRGB(255, 200, 80))
+                    .withFade(BLUE_RGB)
                     .trail(true).flicker(big)
                     .build());
             meta.setPower(1);

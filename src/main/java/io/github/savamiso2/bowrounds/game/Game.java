@@ -57,7 +57,7 @@ public final class Game {
     private final List<GamePlayer> eliminated = new ArrayList<>();
     private final Map<UUID, CardStage> stages = new LinkedHashMap<>();
     private final List<Block> pickFloor = new ArrayList<>();
-    private final BossBar bossBar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
+    private final BossBar bossBar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.PINK, BossBar.Overlay.NOTCHED_10);
     private final TabList tab;
 
     private GameState state = GameState.COUNTDOWN;
@@ -161,7 +161,8 @@ public final class Game {
 
         state = GameState.COUNTDOWN;
         phaseSeconds = settings.countdownSeconds();
-        bossBar.name(Component.text("ラウンド " + round + " / " + settings.rounds() + "  " + arena.name(), NamedTextColor.YELLOW));
+        bossBar.name(Fx.mm(Fx.PINK + "● <white><bold>LIVE</bold>  <gray>ROUND <white>" + round + " <dark_gray>/ " + settings.rounds()
+                + "  <dark_gray>·  <gray>STAGE <white>" + arena.name()));
         bossBar.progress(1f);
         startTimer(this::tickCountdown);
     }
@@ -196,14 +197,14 @@ public final class Game {
         if (phaseSeconds == settings.borderShrinkAfterSeconds()) {
             arena.center().getWorld().getWorldBorder()
                     .setSize(settings.borderMinSize(), settings.borderShrinkDurationSeconds());
-            broadcast(Component.text("ボーダーが縮み始めた！", NamedTextColor.RED));
+            broadcast(Fx.mm(Fx.PINK + "▲ <white>ボーダーが縮み始めた！"));
         }
         if (phaseSeconds == limit) {
             for (GamePlayer gp : alivePlayers()) {
                 gp.player().setGlowing(true);
             }
             bossBar.color(BossBar.Color.RED);
-            broadcast(Component.text("サドンデス！全員が発光します", NamedTextColor.RED));
+            broadcast(Fx.mm(Fx.PINK + "▲ <white><bold>SUDDEN DEATH</bold> <gray>全員が発光します"));
         }
     }
 
@@ -248,7 +249,7 @@ public final class Game {
 
         GamePlayer winner = ranking.isEmpty() ? null : ranking.getFirst();
         showTitle(Fx.roundWinTitle(winner == null ? "なし" : winner.name()),
-                Fx.mm("<gray>ROUND " + round + " <dark_gray>/ " + settings.rounds()));
+                Fx.mm("<gray>ROUND " + round + " <dark_gray>/ " + settings.rounds() + "  <gray>CUT"));
         playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE);
         if (winner != null && winner.player() != null && winner.alive) {
             Fx.sparkle(winner.player().getLocation().add(0, 1.2, 0));
@@ -312,8 +313,8 @@ public final class Game {
                     () -> stages.values().forEach(CardStage::updateHover), 1L, 2L);
         }
         phaseSeconds = settings.cardPickSeconds();
-        bossBar.name(Component.text("カード選択中…", NamedTextColor.LIGHT_PURPLE));
-        bossBar.color(BossBar.Color.PURPLE);
+        bossBar.name(Fx.mm(Fx.BLUE + "◆ <white><bold>PATCH SELECT</bold> <gray>カード選択中…"));
+        bossBar.color(BossBar.Color.BLUE);
         startTimer(this::tickCardPick);
     }
 
@@ -367,7 +368,7 @@ public final class Game {
             // 制限時間なし：全員が選ぶまで待つ。ボスバーは残り人数
             long total = players.values().stream().filter(g -> !g.offer.isEmpty() && g.player() != null).count();
             long waiting = players.values().stream().filter(g -> !g.picked && g.player() != null).count();
-            bossBar.name(Component.text("カード選択中… あと" + waiting + "人", NamedTextColor.LIGHT_PURPLE));
+            bossBar.name(Fx.mm(Fx.BLUE + "◆ <white><bold>PATCH SELECT</bold> <gray>あと <white>" + waiting + "<gray>人"));
             bossBar.progress(total == 0 ? 1f : (float) (total - waiting) / total);
             return;
         }
@@ -402,7 +403,7 @@ public final class Game {
         }
         finishing = false;
         closeStages();
-        bossBar.color(BossBar.Color.YELLOW);
+        bossBar.color(BossBar.Color.PINK);
         cancelTimer();
         broadcast(CardList.hint());
         nextRound();
@@ -421,14 +422,14 @@ public final class Game {
         if (announce) {
             List<GamePlayer> ranking = players.values().stream()
                     .sorted(Comparator.comparingInt(GamePlayer::points).reversed()).toList();
-            broadcast(Component.text("===== 最終結果 =====", NamedTextColor.GOLD));
+            broadcast(Fx.mm(Fx.PINK + "● <white><bold>FINAL RESULT</bold> <gray>最終結果"));
             for (int i = 0; i < Math.min(5, ranking.size()); i++) {
                 GamePlayer gp = ranking.get(i);
-                broadcast(Component.text((i + 1) + "位 " + gp.name() + "  " + gp.points + "pt（" + gp.kills + "キル）",
-                        i == 0 ? NamedTextColor.YELLOW : NamedTextColor.WHITE));
+                broadcast(Fx.mm((i == 0 ? Fx.PINK : "<gray>") + "#" + (i + 1) + " <white>" + gp.name() + "  " + gp.points
+                        + Fx.MINT + "pt <gray>(" + gp.kills + "キル)"));
             }
             if (!ranking.isEmpty()) {
-                showTitle(Fx.championTitle(ranking.getFirst().name()), Fx.mm("<yellow>の優勝！"));
+                showTitle(Fx.championTitle(ranking.getFirst().name()), Fx.mm("<gray>の優勝！"));
                 playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE);
                 Player champion = ranking.getFirst().player();
                 if (champion != null) {
@@ -548,6 +549,13 @@ public final class Game {
         }
     }
 
+    /** 残弾をゲージで表示する（AMMO ▮▮▯）。 */
+    private static Component ammoBar(int ammo, int magazine) {
+        int shown = Math.min(ammo, magazine);
+        return Fx.mm("<white><bold>AMMO</bold> " + Fx.MINT + "▮".repeat(shown) + "<dark_gray>"
+                + "▮".repeat(Math.max(0, magazine - shown)) + " <white>" + ammo + "<gray>/" + magazine);
+    }
+
     /** 矢を撃った直後に呼ぶ。残弾表示と、空ならリロード。 */
     void afterShot(GamePlayer gp) {
         Player p = gp.player();
@@ -561,7 +569,7 @@ public final class Game {
             }
         }
         if (ammo > 0) {
-            p.sendActionBar(Component.text("残弾 " + ammo + " / " + gp.stats().magazine, NamedTextColor.WHITE));
+            p.sendActionBar(ammoBar(ammo, gp.stats().magazine));
             return;
         }
         if (gp.reloading) {
@@ -585,15 +593,14 @@ public final class Game {
                 if (elapsed >= reloadTicks) {
                     gp.reloading = false;
                     giveArrows(gp);
-                    player.sendActionBar(Component.text("リロード完了", NamedTextColor.GREEN));
+                    player.sendActionBar(Fx.mm(Fx.MINT + "<bold>RELOADED</bold> <gray>リロード完了"));
                     player.playSound(player.getLocation(), Sound.ITEM_CROSSBOW_LOADING_END, 1f, 1f);
                     cancel();
                     return;
                 }
                 int filled = (int) Math.round(10.0 * elapsed / reloadTicks);
-                player.sendActionBar(Component.text("リロード中 ", NamedTextColor.YELLOW)
-                        .append(Component.text("■".repeat(filled), NamedTextColor.GREEN))
-                        .append(Component.text("■".repeat(10 - filled), NamedTextColor.DARK_GRAY)));
+                player.sendActionBar(Fx.mm(Fx.BLUE + "<bold>RELOAD</bold> " + Fx.BLUE + "▮".repeat(filled)
+                        + "<dark_gray>" + "▮".repeat(10 - filled)));
             }
         }.runTaskTimer(plugin, 2L, 2L);
     }

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -65,7 +66,7 @@ public final class CardMenu implements InventoryHolder {
         return item;
     }
 
-    private static Component plain(String text, NamedTextColor color) {
+    private static Component plain(String text, TextColor color) {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
